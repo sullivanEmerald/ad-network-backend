@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------
+  # MySQL Database Service for Revive
+  # ---------------------------------------------------
+  revive-db:
+    image: mysql:8.0
+    container_name: revive-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: revive_adserver
+      MYSQL_USER: revive_user
+      MYSQL_PASSWORD: revive_password
+    ports:
+      - "3306:3306" # Accessible locally for debugging SQL schema
+    volumes:
+      - revive_db_data:/var/lib/mysql
+    networks:
+      - ad-network
+
+  # ---------------------------------------------------
+  # Revive Adserver Application Engine
+  # ---------------------------------------------------
+  revive-app:
+    image: ipunkt/revive-adserver:latest
+    container_name: revive-app
+    restart: always
+    depends_on:
+      - revive-db
+    ports:
+      - "8080:80" # Revive Admin Dashboard & XML-RPC Endpoint
+    environment:
+      - DB_HOST=revive-db
+      - DB_PORT=3306
+      - DB_NAME=revive_adserver
+      - DB_USERNAME=revive_user
+      - DB_PASSWORD=revive_password
+    volumes:
+      - revive_conf:/var/www/html/var
+      - revive_plugins:/var/www/html/plugins
+      - revive_www_images:/var/www/html/www/images
+    networks:
+      - ad-network
+
+  # ---------------------------------------------------
+  # Local NestJS Backend Control Plane (Optional Container)
+  # ---------------------------------------------------
+  nestjs-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nestjs-api
+    restart: always
+    depends_on:
+      - revive-app
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - REVIVE_XMLRPC_HOST=revive-app
+      - REVIVE_XMLRPC_PORT=80
+      - REVIVE_XMLRPC_PATH=/www/api/v2/xmlrpc/
+      - REVIVE_ADMIN_USER=admin
+      - REVIVE_ADMIN_PASS=adminpassword
+    networks:
+      - ad-network
+
+networks:
+  ad-network:
+    driver: bridge
+
+volumes:
+  revive_db_data:
+  revive_conf:
+  revive_plugins:
+  revive_www_images:
