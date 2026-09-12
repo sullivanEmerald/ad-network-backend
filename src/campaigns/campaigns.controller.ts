@@ -12,8 +12,8 @@ export class CampaignsController {
     constructor(private readonly campaignsService: CampaignsService) { }
 
     @Post()
-    create(@Body() dto: CreateCampaignDto) {
-        return this.campaignsService.create(dto);
+    create(@Body() dto: CreateDraftCampaignDto, @CurrentUser() user: any) {
+        return this.campaignsService.lanuchCampaign(dto, user.userId);
     }
 
     @Get('drafts')

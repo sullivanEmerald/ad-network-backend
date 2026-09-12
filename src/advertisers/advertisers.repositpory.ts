@@ -32,6 +32,7 @@ export class AdvertisersRepository {
         organizationId: Types.ObjectId;
         name: string;
         email: string;
+        reviveAdvertiserId: number
     }): Promise<AdvertiserDocument> {
         const advertiser = new this.advertiserModel(data);
 

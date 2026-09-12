@@ -6,6 +6,7 @@ import { AdServerModule } from './ad-server/ad-server.module';
 import { AdvertisersModule } from './advertisers/advertisers.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { ReviveModule } from './revive/revive.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
     AdvertisersModule,
     AuthModule,
     UsersModule,
+    ReviveModule,
   ],
 })
 export class AppModule { }

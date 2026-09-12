@@ -4,6 +4,7 @@ import * as xmlrpc from 'xmlrpc';
 import { CreateAdvertiserDto } from './dto/create-advertiser.dto';
 import { AdvertisersRepository } from "./advertisers.repositpory";
 import { Types } from 'mongoose';
+import { REVIVE_ADVERTISER_METHODS } from './revive/advertiser-methods.revive';
 
 @Injectable()
 export class AdvertisersService implements OnModuleInit {
@@ -82,39 +83,37 @@ export class AdvertisersService implements OnModuleInit {
             throw new ConflictException('Advertiser already exists for this organization');
         }
 
+        const session = await this.ensureSession();
+
+        // Revive XML-RPC expects: sessionId, struct of fields
         try {
+            const advertiserId = await this.callApi<number>(REVIVE_ADVERTISER_METHODS.ADD, [
+                session,
+                {
+                    advertiserName: dto.name,
+                    contactName: dto.name,
+                    emailAddress: dto.email,
+                },
+            ]);
+            console.log('advertiser id', advertiserId)
+
             return await this.advertisersRepository.create({
                 organizationId: organizationObjectId,
                 name: dto.name,
                 email: dto.email,
+                reviveAdvertiserId: advertiserId
             });
 
         } catch (error) {
-            this.logger.error('Failed to create advertiser in Revive', error);
-            throw error;
+            console.log(error)
         }
-        const session = await this.ensureSession();
 
-        // Revive XML-RPC expects: sessionId, struct of fields
-        const advertiserId = await this.callApi<number>('ox.addAdvertiser', [
-            session,
-            {
-                advertiserName: dto.name,
-                contactName: dto.name, // Assuming contact name is the same as advertiser name
-                emailAddress: dto.email,
-            },
-        ]);
-
-        return advertiserId;
     }
 
-    /**
-     * Fetches an Advertiser by ID
-     */
     async getAdvertiser(advertiserId: number): Promise<any> {
         const session = await this.ensureSession();
 
-        return this.callApi<any>('ox.getAdvertiser', [
+        return this.callApi<any>(REVIVE_ADVERTISER_METHODS.GETADVERTISER, [
             session,
             advertiserId,
         ]);

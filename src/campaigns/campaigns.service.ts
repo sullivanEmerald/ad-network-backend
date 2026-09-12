@@ -12,10 +12,20 @@ export class CampaignsService {
         private readonly campaignModel: Model<CampaignDocument>,
     ) { }
 
-    async create(dto: CreateCampaignDto) {
+    async lanuchCampaign(dto: CreateDraftCampaignDto, userId: string) {
+        const status: 'draft' | 'active' = dto.status as 'draft' | 'active';
+        const existingDraft = await this.campaignModel.findOne({ _id: dto.draftId, userId, status: 'draft' });
+        if (existingDraft) {
+            return this.campaignModel.findOneAndUpdate(
+                { _id: existingDraft._id },
+                { $set: { data: dto.data ?? {}, status, lastSavedAt: new Date() } },
+                { new: true }
+            );
+        }
         return this.campaignModel.create({
             data: dto.data ?? {},
-            status: 'draft',
+            userId,
+            status,
             lastSavedAt: new Date(),
         });
     }
