@@ -1,6 +1,7 @@
-import { IsInt, IsObject, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { LaunchCampaignDto } from './campaign.dto';
 
-export class CreateDraftCampaignDto {
+export class CreateDraftCampaignDto extends LaunchCampaignDto {
     @IsOptional()
     @IsInt()
     @Min(0)
@@ -11,13 +12,4 @@ export class CreateDraftCampaignDto {
     @Min(0, { each: true })
     completedSteps?: number[];
 
-    @IsString()
-    status!: string;
-
-    @IsOptional()
-    @IsString()
-    draftId?: string;
-
-    @IsObject()
-    data!: Record<string, unknown>;
 }

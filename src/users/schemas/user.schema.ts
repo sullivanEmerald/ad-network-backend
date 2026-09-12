@@ -1,6 +1,8 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
+import { HydratedDocument } from 'mongoose';
 
+export type UserDocument = HydratedDocument<User>;
 export type UserRole = "owner" | "member";
 export type AccountType = "advertiser" | "publisher";
 
