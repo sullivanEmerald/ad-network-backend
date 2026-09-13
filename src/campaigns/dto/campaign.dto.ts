@@ -96,5 +96,5 @@ export class LaunchCampaignDto {
     draftId?: string
 
     @IsEnum(CampaignPacing)
-    pacing!: CampaignPacing;
+    pacing?: CampaignPacing;
 }

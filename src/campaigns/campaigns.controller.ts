@@ -1,11 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
-import { CreateCampaignDto } from './dto/create-campaign.dto';
-import { CreateDraftCampaignDto } from './dto/update-campaign.dto';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { CampaignsService } from './campaigns.service';
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { UseGuards } from "@nestjs/common";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { LaunchCampaignDto } from './dto/campaign.dto';
+import { CreateDraftCampaignDto } from './dto/update-campaign.dto';
+import { Campaign } from './schemas/campaign.schema';
+
 
 @UseGuards(JwtAuthGuard)
 @Controller('campaigns')
@@ -18,6 +19,23 @@ export class CampaignsController {
         return this.campaignsService.lanuchCampaign(dto, user.userId);
     }
 
+    @Get()
+    getCampaigns(@CurrentUser() user: any) {
+        return this.campaignsService.getCampaigns(user.userId);
+    }
+
+    @Get(':id')
+    getCampaignById(@Param('id') id: string, @CurrentUser() user: any) {
+        return this.campaignsService.getCampaignById(id, user.userId);
+    }
+
+    @Post('drafts')
+    async saveDraft(@Body() dto: Partial<Campaign>, @CurrentUser() user: any) {
+        console.log("draft dto", dto)
+        const campaign = await this.campaignsService.createDraft(dto, user.userId);
+        return campaign;
+    }
+
     // @Get('drafts')
     // findDrafts(@CurrentUser() user: any) {
     //     const drafts = this.campaignsService.findDraft(user.userId);
@@ -25,18 +43,11 @@ export class CampaignsController {
     //     return drafts;
     // }
 
-    // @Get('drafts/:id')
-    // async findDraftById(@Param('id') id: string, @CurrentUser() user: any) {
-    //     const campaign = await this.campaignsService.findDraftById(id, user.userId);
-    //     return campaign;
-    // }
-
-    // @Post('drafts')
-    // async saveDraft(@Body() dto: CreateDraftCampaignDto, @CurrentUser() user: any) {
-    //     console.log('dto', dto)
-    //     const campaign = await this.campaignsService.createDraft(dto, user.userId);
-    //     console.log('campaign', campaign)
-    //     return campaign;
-    // }
+    @Get('drafts/:id')
+    async findDraftById(@Param('id') id: string, @CurrentUser() user: any) {
+        console.log('fetching draft', id)
+        const campaign = await this.campaignsService.findDraftById(id, user.userId);
+        return campaign;
+    }
 
 }

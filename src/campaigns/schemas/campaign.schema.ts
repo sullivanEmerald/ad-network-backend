@@ -20,20 +20,20 @@ export enum CampaignStatus {
 @Schema({ _id: false })
 export class GeoTarget {
     @Prop({
-        required: true,
+        required: false,
         trim: true,
         uppercase: true,
         minlength: 2,
         maxlength: 2,
     })
-    code!: string;
+    code?: string;
 
     @Prop({
-        required: true,
+        required: false,
         trim: true,
         maxlength: 150,
     })
-    label!: string;
+    label?: string;
 }
 
 export const GeoTargetSchema = SchemaFactory.createForClass(GeoTarget);
@@ -46,6 +46,7 @@ export class Campaign {
         type: Types.ObjectId,
         required: true,
         index: true,
+        ref: 'User'
     })
     organizationId?: Types.ObjectId;
 
@@ -66,40 +67,40 @@ export class Campaign {
     campaignName!: string;
 
     @Prop({
-        required: true,
+        required: false,
         enum: Object.values(CampaignObjective),
     })
     objective?: CampaignObjective;
 
     @Prop({
         type: [GeoTargetSchema],
-        required: true,
+        required: false,
     })
-    geo!: GeoTarget[];
+    geo?: GeoTarget[];
 
     @Prop({
         type: [String],
         enum: Object.values(CampaignDevice),
-        required: true,
+        required: false,
     })
-    devices!: CampaignDevice[];
+    devices?: CampaignDevice[];
 
     @Prop({
-        required: true,
+        required: false,
         enum: Object.values(CampaignBudgetType),
     })
-    budgetType!: CampaignBudgetType;
+    budgetType?: CampaignBudgetType;
 
     @Prop({
-        required: true,
-        min: 50,
+        required: false,
+        min: 0,
     })
-    budgetAmount!: number;
+    budgetAmount?: number;
 
     @Prop({
-        required: true,
+        required: false,
     })
-    startDate!: Date;
+    startDate?: Date;
 
     @Prop()
     endDate?: Date;
@@ -108,22 +109,23 @@ export class Campaign {
     draftId?: string | null;
 
     @Prop({
-        required: true,
+        required: false,
         enum: Object.values(CampaignPacing),
     })
-    pacing!: CampaignPacing;
+    pacing?: CampaignPacing;
 
     @Prop({
         required: true,
         enum: Object.values(CampaignStatus),
         default: CampaignStatus.DRAFT,
     })
-    status!: CampaignStatus;
+    status?: CampaignStatus;
 
     @Prop({
-        required: true,
+        required: false,
         unique: true,
         index: true,
+        sparse: true,
     })
     reviveCampaignId?: number;
 }

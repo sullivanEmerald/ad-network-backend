@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as xmlrpc from 'xmlrpc';
 import { REVIVE_ADVERTISER_METHODS } from '../advertisers/revive/advertiser-methods.revive';
 import { REVIVE_CAMPAIGN_METHODS } from './enums/campaigns.enums';
+import { REVIVE_CREATIVE_METHODS } from './enums/creatives/creative-methods.revive';
 
 @Injectable()
 export class ReviveService implements OnModuleInit {
@@ -98,6 +99,50 @@ export class ReviveService implements OnModuleInit {
             throw new BadRequestException('Campaign not successfully Created')
         } finally {
             // await this.logout(sessionId);
+        }
+    }
+
+    // Banners
+    async addBanner(dto: {
+        campaignId: number;
+        bannerName: string;
+        storageType: string;
+        imageFilename: string;
+        imageContent: Buffer;
+        destinationUrl: string;
+        width: number;
+        height: number;
+        url: string;
+    }) {
+        const sessionId = await this.ensureSession();
+
+        try {
+            const bannerId = await this.callApi<number>(
+                REVIVE_CREATIVE_METHODS.ADD_BANNER,
+                [
+                    sessionId,
+                    {
+                        campaignId: dto.campaignId,
+                        bannerName: dto.bannerName,
+                        storageType: dto.storageType,
+                        aImage: { filename: dto.imageFilename, content: dto.imageContent, },
+                        width: dto.width,
+                        height: dto.height,
+                        url: dto.destinationUrl,
+                        weight: 1,
+                        target: '_blank',
+                        status: 0,
+                    },
+                ],
+            );
+
+            return bannerId;
+        } catch (error) {
+            this.logger.error('Failed to create Revive banner', error);
+
+            throw new BadRequestException(
+                'Banner not successfully created',
+            );
         }
     }
 

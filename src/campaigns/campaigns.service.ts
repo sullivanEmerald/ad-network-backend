@@ -73,6 +73,50 @@ export class CampaignsService {
 
     }
 
+    async getCampaigns(userId: string) {
+        const organizationId = this.toObjectId(userId);
+
+        const campaigns = await this.campaignModel
+            .find({ organizationId })
+            .sort({ createdAt: -1 })
+            .lean()
+            .exec();
+
+        return campaigns.map((campaign) => this.transformCampaign(campaign));
+    }
+
+    async getCampaignById(id: string, userId: string) {
+        const organizationId = this.toObjectId(userId);
+        const campaign = await this.campaignModel
+            .findOne({ _id: this.toObjectId(id), organizationId })
+            .lean()
+            .exec();
+
+        if (!campaign) {
+            throw new NotFoundException('Campaign not found');
+        }
+
+        return this.transformCampaign(campaign);
+    }
+
+    private transformCampaign(campaign: CampaignDocument | Record<string, any>) {
+        const { _id, ...campaignData } = campaign as any;
+
+        return {
+            ...campaignData,
+            id: _id.toString(),
+            isSchedule: new Date(campaignData.startDate).getTime() > Date.now(),
+        };
+    }
+
+    private toObjectId(id: string): Types.ObjectId {
+        if (!Types.ObjectId.isValid(id)) {
+            throw new NotFoundException('Campaign not found');
+        }
+
+        return new Types.ObjectId(id);
+    }
+
     // async findDraft(userId: string) {
     //     const campaign = await this.campaignModel
     //         .find({ userId, status: 'draft' })
@@ -88,34 +132,69 @@ export class CampaignsService {
     //     }));
 
     //     return transformedCampaign;
-    // }
+    // 
 
-    // async createDraft(dto: CreateDraftCampaignDto, userId: string) {
-    //     const status: 'draft' | 'active' = dto.status as 'draft' | 'active';
-    //     const existingDraft = await this.campaignModel.findOne({ _id: dto.draftId, userId, status: 'draft' });
-    //     if (existingDraft) {
-    //         return this.campaignModel.findOneAndUpdate(
-    //             { _id: existingDraft._id },
-    //             { $set: { data: dto.data ?? {}, status, lastSavedAt: new Date() } },
-    //             { new: true }
-    //         );
-    //     }
-    //     return this.campaignModel.create({
-    //         data: dto.data ?? {},
-    //         userId,
-    //         status,
-    //         lastSavedAt: new Date(),
-    //     });
-    // }
+    async createDraft(dto: Partial<Campaign>, userId: string) {
+        const organizationId = this.toObjectId(userId);
+        const organization = await this.organizationModel.findById(organizationId).exec();
+        if (!organization) {
+            throw new NotFoundException('Organization not found');
+        }
 
-    // async findDraftById(id: string, userId: string) {
-    //     const campaign = await this.campaignModel.findOne({ _id: id, userId, status: 'draft' }).lean();
-    //     if (!campaign) {
-    //         throw new NotFoundException('Draft not found');
-    //     }
-    //     const transformedCampaign = {
-    //         ...campaign.data,
-    //     };
-    //     return transformedCampaign;
-    // }
+        const advertiser = await this.advertiserModel
+            .findOne({ organizationId })
+            .exec();
+        if (!advertiser) {
+            throw new NotFoundException('Advertiser not found for this organization');
+        }
+
+        // const startDate = new Date(dto?.startDate);
+        // const endDate = dto.endDate ? new Date(dto.endDate) : undefined;
+        // if (endDate && endDate.getTime() <= startDate.getTime()) {
+        //     throw new BadRequestException('End date must be after start date.');
+        // }
+
+        const draftData = {
+            organizationId,
+            advertiserId: advertiser._id,
+            campaignName: dto.campaignName,
+            objective: dto?.objective,
+            geo: dto?.geo,
+            devices: dto?.devices,
+            budgetType: dto?.budgetType,
+            budgetAmount: dto?.budgetAmount,
+            startDate: dto?.startDate,
+            endDate: dto?.endDate,
+            draftId: dto?.draftId ?? null,
+            pacing: dto?.pacing,
+            status: CampaignDbStatus.DRAFT,
+        };
+
+        if (dto.draftId) {
+            const draftId = this.toObjectId(dto.draftId);
+            const existingDraft = await this.campaignModel
+                .findOne({ _id: draftId, organizationId, status: CampaignDbStatus.DRAFT })
+                .exec();
+
+            if (!existingDraft) {
+                throw new NotFoundException('Draft not found');
+            }
+
+            return this.campaignModel
+                .findByIdAndUpdate(existingDraft._id, { $set: draftData }, { new: true, runValidators: true })
+                .exec();
+        }
+
+        return this.campaignModel.create(draftData);
+    }
+
+    async findDraftById(id: string, userId: string) {
+        const organizationId = this.toObjectId(userId)
+        const campaign = await this.campaignModel.findOne({ _id: id, organizationId }).lean();
+        if (!campaign) {
+            throw new NotFoundException('Draft not found');
+        }
+
+        return campaign;
+    }
 }
