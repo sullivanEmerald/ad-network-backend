@@ -9,6 +9,7 @@ import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { RefreshToken, RefreshTokenSchema } from './jwt/refresh-token.schema';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { ReviveModule } from '../revive/revive.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       }),
     }),
     PassportModule,
+    ReviveModule
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy]

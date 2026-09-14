@@ -28,11 +28,16 @@ export class User extends Document {
     @Prop({ required: true })
     password!: string;
 
-    @Prop({ type: Types.ObjectId, ref: "Account", required: true, index: true })
-    accountId!: Types.ObjectId;
-
     @Prop({ required: true, enum: ["owner", "member"], default: "owner" })
     role!: UserRole;
+
+    @Prop({
+        type: Number,
+        unique: true,
+        sparse: true,
+        index: true,
+    })
+    reviveAgencyId?: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

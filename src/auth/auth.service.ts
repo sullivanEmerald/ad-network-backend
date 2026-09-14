@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { JwtService } from "@nestjs/jwt";
@@ -14,6 +14,8 @@ import type { JwtPayload } from "./jwt/jwt-payload.interface";
 import { RefreshToken } from "./jwt/refresh-token.schema";
 import type { Response } from 'express';
 import type { RefreshTokenDocument } from "./jwt/refresh-token.schema";
+import { ReviveService } from "../revive/revive.service";
+import { NotFoundError } from "rxjs";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -24,14 +26,14 @@ export class AuthService {
         @InjectModel(User.name) private userModel: Model<User>,
         @InjectModel(RefreshToken.name) private refreshTokenModel: Model<RefreshToken>,
         private jwtService: JwtService,
-        private configService: ConfigService
+        private configService: ConfigService,
+        private readonly reviveService: ReviveService
     ) { }
 
     async issueTokens(user: any) {
         const accessToken = this.jwtService.sign(
             {
                 sub: user._id.toString(),
-                accountId: user.accountId.toString(),
                 role: user.role,
             },
             {
@@ -76,19 +78,39 @@ export class AuthService {
             throw new ConflictException("An account with this email already exists");
         }
 
-        const account = await this.accountModel.create({ accountName: dto.organizationName });
-
         const password = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+
+        const revivePassword = randomBytes(32).toString('hex');
+
+        let reviveAgencyId: number;
+
+        try {
+            reviveAgencyId = await this.reviveService.addAgency({
+                agencyName: dto.organizationName,
+                contactName: `${dto.firstName} ${dto.lastName}`,
+                emailAddress: dto.businessEmail,
+                username: dto.businessEmail,
+                password: revivePassword,
+                userEmail: dto.businessEmail,
+                language: 'en',
+                status: 1,
+            });
+        } catch (error) {
+            console.log('Revive organnisation agency creation error', error)
+            throw new NotFoundException("Error Creating User")
+        }
+
         const user = await this.userModel.create({
             firstName: dto.firstName,
             lastName: dto.lastName,
             businessEmail: dto.businessEmail,
             organizationName: dto.organizationName,
             accountType: dto.accountType,
+            reviveAgencyId: reviveAgencyId,
             password,
-            accountId: account._id,
-            role: "owner",
         });
+
+        return user;
     }
 
     async login(dto: LoginDto) {

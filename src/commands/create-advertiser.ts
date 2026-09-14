@@ -25,12 +25,6 @@ async function bootstrap() {
             return;
         }
 
-        // Create Account model
-        const AccountModel = mongoose.model(Account.name, AccountSchema);
-
-        const account = await AccountModel.create({ accountName: 'AdCustex Admin' });
-
-
         const password = await bcrypt.hash('Admin@123', BCRYPT_ROUNDS);
         const user = await UserModel.create({
             firstName: 'AdCustex',
@@ -39,8 +33,6 @@ async function bootstrap() {
             organizationName: 'AdCustex Admin',
             accountType: 'advertiser',
             password,
-            accountId: account._id,
-            role: "owner",
         });
         console.log('✅ User created successfully');
         return user;

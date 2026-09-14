@@ -19,8 +19,8 @@ export class RegisterDto {
     @MaxLength(120)
     organizationName!: string;
 
-    @IsIn(["advertiser"])
-    accountType!: "advertiser";
+    @IsIn(["advertiser", "publisher"])
+    accountType!: "advertiser" | "publisher";
 
     @IsString()
     @MinLength(8, { message: "Password must be at least 8 characters" })

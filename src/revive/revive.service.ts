@@ -4,6 +4,8 @@ import * as xmlrpc from 'xmlrpc';
 import { REVIVE_ADVERTISER_METHODS } from '../advertisers/revive/advertiser-methods.revive';
 import { REVIVE_CAMPAIGN_METHODS } from './enums/campaigns.enums';
 import { REVIVE_CREATIVE_METHODS } from '../creative/methods/creative-methods.revive';
+import { REVIVE_PUBLISHER_METHODS } from '../publishers/revive/publishers-method.revive';
+import { REVIVE_AGENCY_METHODS } from './enums/agency.enums';
 
 @Injectable()
 export class ReviveService implements OnModuleInit {
@@ -138,5 +140,97 @@ export class ReviveService implements OnModuleInit {
             );
         }
     }
+
+    // PUBLISHERS
+    async addPublisher(dto: {
+        agencyId: number;
+        publisherName: string;
+        contactName: string;
+        emailAddress: string;
+        website: string;
+        comments?: string;
+    }): Promise<number> {
+        const sessionId = await this.ensureSession();
+
+        try {
+            const publisherId = await this.callApi<number>(
+                REVIVE_PUBLISHER_METHODS.ADD,
+                [
+                    sessionId,
+                    {
+                        agencyId: dto.agencyId,
+                        publisherName: dto.publisherName,
+                        contactName: dto.contactName,
+                        emailAddress: dto.emailAddress,
+                        website: dto.website,
+                        ...(dto.comments && {
+                            comments: dto.comments,
+                        }),
+                    },
+                ],
+            );
+
+            this.logger.log(
+                `Successfully created Revive publisher: ${publisherId}`,
+            );
+
+            return publisherId;
+        } catch (error) {
+            this.logger.error(
+                'Failed to create publisher in Revive',
+                error,
+            );
+
+            throw error;
+        }
+    }
+
+    // Publishers
+    async addAgency(dto: {
+        agencyName: string;
+        contactName: string;
+        emailAddress: string;
+        username: string;
+        password: string;
+        userEmail: string;
+        language?: string;
+        status?: number;
+    }): Promise<number> {
+        const sessionId = await this.ensureSession();
+
+        try {
+            const agencyId = await this.callApi<number>(
+                REVIVE_AGENCY_METHODS.ADD,
+                [
+                    sessionId,
+                    {
+                        agencyName: dto.agencyName,
+                        contactName: dto.contactName,
+                        emailAddress: dto.emailAddress,
+                        username: dto.username,
+                        password: dto.password,
+                        userEmail: dto.userEmail,
+                        language: dto.language ?? 'en',
+                        status: dto.status ?? 1,
+                    },
+                ],
+            );
+
+            this.logger.log(
+                `Successfully created Revive agency: ${agencyId}`,
+            );
+
+            return agencyId;
+        } catch (error) {
+            this.logger.error(
+                'Failed to create agency in Revive',
+                error,
+            );
+
+            throw error;
+        }
+    }
+
+
 
 }

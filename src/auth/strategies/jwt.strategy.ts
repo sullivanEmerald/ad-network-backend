@@ -25,9 +25,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // Runs after the token's signature and expiry are already verified by
     // passport-jwt — this only shapes what lands on req.user.
     validate(payload: JwtPayload): AuthenticatedUser {
-        if (!payload.sub || !payload.accountId) {
+        if (!payload.sub) {
             throw new UnauthorizedException("Malformed token");
         }
-        return { userId: payload.sub, accountId: payload.accountId, role: payload.role };
+        return { userId: payload.sub, role: payload.role };
     }
 }
