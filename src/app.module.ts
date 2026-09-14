@@ -7,6 +7,8 @@ import { AdvertisersModule } from './advertisers/advertisers.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ReviveModule } from './revive/revive.module';
+import { CreativeModule } from './creative/creative.module';
+import { PublishersModule } from './publishers/publishers.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { ReviveModule } from './revive/revive.module';
     AuthModule,
     UsersModule,
     ReviveModule,
+    CreativeModule,
+    PublishersModule,
   ],
 })
 export class AppModule { }

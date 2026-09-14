@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as xmlrpc from 'xmlrpc';
 import { REVIVE_ADVERTISER_METHODS } from '../advertisers/revive/advertiser-methods.revive';
 import { REVIVE_CAMPAIGN_METHODS } from './enums/campaigns.enums';
-import { REVIVE_CREATIVE_METHODS } from './enums/creatives/creative-methods.revive';
+import { REVIVE_CREATIVE_METHODS } from '../creative/methods/creative-methods.revive';
 
 @Injectable()
 export class ReviveService implements OnModuleInit {
@@ -106,13 +106,9 @@ export class ReviveService implements OnModuleInit {
     async addBanner(dto: {
         campaignId: number;
         bannerName: string;
-        storageType: string;
         imageFilename: string;
         imageContent: Buffer;
         destinationUrl: string;
-        width: number;
-        height: number;
-        url: string;
     }) {
         const sessionId = await this.ensureSession();
 
@@ -124,10 +120,7 @@ export class ReviveService implements OnModuleInit {
                     {
                         campaignId: dto.campaignId,
                         bannerName: dto.bannerName,
-                        storageType: dto.storageType,
                         aImage: { filename: dto.imageFilename, content: dto.imageContent, },
-                        width: dto.width,
-                        height: dto.height,
                         url: dto.destinationUrl,
                         weight: 1,
                         target: '_blank',
