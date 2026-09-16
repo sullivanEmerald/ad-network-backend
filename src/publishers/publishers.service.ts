@@ -82,7 +82,13 @@ export class PublishersService {
                 comments: dto.comments,
             });
 
-        return publisher;
+        return {
+            id: publisher._id.toString(),
+            name: publisher.name,
+            contactName: publisher.contactName,
+            emailAddress: publisher.emailAddress,
+            website: publisher.website,
+        };
     }
 
     async findByOrganisation(userId: string) {

@@ -125,7 +125,7 @@ export class AuthService {
             throw new UnauthorizedException('Invalid User Credentials');
         }
         const { accessToken, refreshToken } = await this.issueTokens(user);
-        return { accessToken, refreshToken, user: { id: user._id, businessEmail: user.businessEmail } };
+        return { accessToken, refreshToken, user: { id: user._id, accountType: user.accountType } };
     }
 
     async rotateRefreshToken(oldToken: string) {

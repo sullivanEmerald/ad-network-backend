@@ -20,9 +20,12 @@ export class AuthController {
     @HttpCode(200)
     async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response,) {
         console.log('logging in', dto)
-        const { accessToken, refreshToken } = await this.authService.login(dto);
+        const { accessToken, refreshToken, user } = await this.authService.login(dto);
         this.authService.setAuthCookies(res, accessToken, refreshToken);
-        return { message: 'Login successful' };
+        return {
+            acountType: user.accountType,
+            message: 'Login successful'
+        };
     }
 
     @Post('refresh')
