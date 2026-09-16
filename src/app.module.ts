@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { ReviveModule } from './revive/revive.module';
 import { CreativeModule } from './creative/creative.module';
 import { PublishersModule } from './publishers/publishers.module';
+import { ZoneModule } from './zone/zone.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PublishersModule } from './publishers/publishers.module';
     ReviveModule,
     CreativeModule,
     PublishersModule,
+    ZoneModule,
   ],
 })
 export class AppModule { }

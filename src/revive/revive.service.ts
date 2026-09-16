@@ -6,6 +6,7 @@ import { REVIVE_CAMPAIGN_METHODS } from './enums/campaigns.enums';
 import { REVIVE_CREATIVE_METHODS } from '../creative/methods/creative-methods.revive';
 import { REVIVE_PUBLISHER_METHODS } from '../publishers/revive/publishers-method.revive';
 import { REVIVE_AGENCY_METHODS } from './enums/agency.enums';
+import { REVIVE_ZONE_METHODS } from '../zone/revive/zone-methods.revive';
 
 @Injectable()
 export class ReviveService implements OnModuleInit {
@@ -232,5 +233,138 @@ export class ReviveService implements OnModuleInit {
     }
 
 
+    // ZONES
 
+    async addZone(dto: {
+        publisherId: number;
+        zoneName: string;
+        type: string;
+        width: number;
+        height: number;
+        comments?: string;
+    }): Promise<number> {
+        const sessionId = await this.ensureSession();
+
+        return this.callApi<number>(
+            REVIVE_ZONE_METHODS.ADD,
+            [
+                sessionId,
+                {
+                    publisherId: dto.publisherId,
+                    zoneName: dto.zoneName,
+                    type: dto.type,
+                    width: dto.width,
+                    height: dto.height,
+                    comments: dto.comments ?? '',
+                },
+            ],
+        );
+    }
+
+    async getZone(zoneId: number): Promise<unknown> {
+        const sessionId = await this.ensureSession();
+
+        return this.callApi(
+            REVIVE_ZONE_METHODS.GET,
+            [sessionId, zoneId],
+        );
+    }
+
+    async getZonesByPublisherId(
+        publisherId: number,
+    ): Promise<unknown[]> {
+        const sessionId = await this.ensureSession();
+
+        return this.callApi<unknown[]>(
+            REVIVE_ZONE_METHODS.GET_LIST_BY_PUBLISHER_ID,
+            [sessionId, publisherId],
+        );
+    }
+
+    async modifyZone(dto: {
+        zoneId: number;
+        publisherId: number;
+        zoneName: string;
+        type: string;
+        width: number;
+        height: number;
+        comments?: string;
+    }): Promise<boolean> {
+        const sessionId = await this.ensureSession();
+
+        return this.callApi<boolean>(
+            REVIVE_ZONE_METHODS.MODIFY,
+            [
+                sessionId,
+                {
+                    zoneId: dto.zoneId,
+                    publisherId: dto.publisherId,
+                    zoneName: dto.zoneName,
+                    type: dto.type,
+                    width: dto.width,
+                    height: dto.height,
+                    comments: dto.comments ?? '',
+                },
+            ],
+        );
+    }
+
+    async deleteZone(zoneId: number): Promise<boolean> {
+        const sessionId = await this.ensureSession();
+
+        return this.callApi<boolean>(
+            REVIVE_ZONE_METHODS.DELETE,
+            [sessionId, zoneId],
+        );
+    }
+
+    async linkBanner(
+        zoneId: number,
+        bannerId: number,
+    ): Promise<boolean> {
+        const sessionId = await this.ensureSession();
+
+        return this.callApi<boolean>(
+            REVIVE_ZONE_METHODS.LINK_BANNER,
+            [sessionId, zoneId, bannerId],
+        );
+    }
+
+    async unlinkBanner(
+        zoneId: number,
+        bannerId: number,
+    ): Promise<boolean> {
+        const sessionId = await this.ensureSession();
+
+        return this.callApi<boolean>(
+            REVIVE_ZONE_METHODS.UNLINK_BANNER,
+            [sessionId, zoneId, bannerId],
+        );
+    }
+
+
+    async linkCampaign(
+        zoneId: number,
+        campaignId: number,
+    ): Promise<boolean> {
+        const sessionId = await this.ensureSession();
+
+        return this.callApi<boolean>(
+            REVIVE_ZONE_METHODS.LINK_CAMPAIGN,
+            [sessionId, zoneId, campaignId],
+        );
+    }
+
+
+    async unlinkCampaign(
+        zoneId: number,
+        campaignId: number,
+    ): Promise<boolean> {
+        const sessionId = await this.ensureSession();
+
+        return this.callApi<boolean>(
+            REVIVE_ZONE_METHODS.UNLINK_CAMPAIGN,
+            [sessionId, zoneId, campaignId],
+        );
+    }
 }
