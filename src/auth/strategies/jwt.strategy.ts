@@ -28,6 +28,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         if (!payload.sub) {
             throw new UnauthorizedException("Malformed token");
         }
-        return { userId: payload.sub, role: payload.role };
+        return { userId: payload.sub, role: payload.role, accountType: payload.accountType };
     }
 }

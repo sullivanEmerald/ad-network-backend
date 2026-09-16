@@ -5,11 +5,15 @@ import {
     Get,
     Param,
     Post,
+    UseGuards
 } from '@nestjs/common';
 
 import { CreatePublisherDto } from './dto/create-publisher.dto';
 import { PublishersService } from './publishers.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
+@UseGuards(JwtAuthGuard)
 @Controller('publishers')
 export class PublishersController {
     constructor(
@@ -19,25 +23,19 @@ export class PublishersController {
     @Post()
     async create(
         @Body() dto: CreatePublisherDto,
+        @CurrentUser() user: any
     ) {
-
-        const organisationId = 'CURRENT_ORGANISATION_ID';
-        const reviveAgencyId = 1;
-
         return this.publishersService.create(
-            organisationId,
-            reviveAgencyId,
             dto,
+            user.userId
         );
     }
 
     @Get()
-    async findAll() {
-        const organisationId =
-            'CURRENT_ORGANISATION_ID';
+    async findAll(@CurrentUser() user: any) {
 
         return this.publishersService.findByOrganisation(
-            organisationId,
+            user.userId,
         );
     }
 

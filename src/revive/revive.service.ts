@@ -143,7 +143,7 @@ export class ReviveService implements OnModuleInit {
 
     // PUBLISHERS
     async addPublisher(dto: {
-        agencyId: number;
+        agencyId: number | undefined;
         publisherName: string;
         contactName: string;
         emailAddress: string;

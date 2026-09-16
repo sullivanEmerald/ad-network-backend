@@ -11,9 +11,6 @@ export class AdvertisersService {
         private readonly reviveService: ReviveService
     ) { }
 
-    /**
-     * Creates a new Advertiser in Revive
-     */
     async createAdvertiser(dto: CreateAdvertiserDto, userId: string) {
         const organizationObjectId = new Types.ObjectId(userId);
         const existingAdvertiser = await this.advertisersRepository.findByOrganizationId(organizationObjectId);

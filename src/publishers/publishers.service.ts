@@ -14,54 +14,35 @@ import {
 } from './schemas/publisher.schema';
 
 import { CreatePublisherDto } from './dto/create-publisher.dto';
-
 import { ReviveService } from '../revive/revive.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class PublishersService {
     constructor(
         @InjectModel(Publisher.name)
         private readonly publisherModel: Model<PublisherDocument>,
-
         private readonly reviveService: ReviveService,
+        private readonly organisationalService: UsersService
     ) { }
 
     async create(
-        organisationId: string,
-        reviveAgencyId: number,
         dto: CreatePublisherDto,
+        userId: string,
     ) {
-        if (!Types.ObjectId.isValid(organisationId)) {
-            throw new BadRequestException(
-                'Invalid organisation ID',
-            );
+
+        const organisationalProfile = await this.organisationalService.findOrganisationById(userId)
+
+        if (!organisationalProfile) {
+            throw new BadRequestException("Organisational is not registered with us")
         }
 
-        /**
-         * Prevent duplicate publisher names for the same
-         * organisation.
-         */
-        const existingPublisher =
-            await this.publisherModel.findOne({
-                organisationId,
-                name: dto.name,
-            });
-
-        if (existingPublisher) {
-            throw new BadRequestException(
-                'A publisher with this name already exists',
-            );
-        }
-
-        /**
-         * Create publisher in Revive first.
-         */
         let revivePublisherId: number;
 
         try {
             revivePublisherId =
                 await this.reviveService.addPublisher({
-                    agencyId: reviveAgencyId,
+                    agencyId: organisationalProfile.reviveAgencyId,
 
                     publisherName: dto.name,
 
@@ -78,15 +59,10 @@ export class PublishersService {
                 'Publisher could not be created in the ad server',
             );
         }
-
-        /**
-         * Persist Custex representation only after
-         * Revive succeeds.
-         */
         const publisher =
             await this.publisherModel.create({
                 organisationId: new Types.ObjectId(
-                    organisationId,
+                    userId,
                 ),
 
                 name: dto.name,
@@ -97,7 +73,7 @@ export class PublishersService {
 
                 emailAddress: dto.emailAddress,
 
-                reviveAgencyId,
+                reviveAgencyId: organisationalProfile.reviveAgencyId,
 
                 revivePublisherId,
 
@@ -109,17 +85,20 @@ export class PublishersService {
         return publisher;
     }
 
-    async findByOrganisation(
-        organisationId: string,
-    ) {
-        return this.publisherModel
-            .find({
-                organisationId,
-            })
-            .sort({
-                createdAt: -1,
-            })
+    async findByOrganisation(userId: string) {
+        const organisationId = new Types.ObjectId(userId)
+        const organisationalPublishers = await this.publisherModel
+            .find({ organisationId })
+            .sort({ createdAt: -1 })
             .lean();
+
+        return organisationalPublishers.map((publisher) => ({
+            id: publisher._id.toString(),
+            name: publisher.name,
+            contactName: publisher.contactName,
+            emailAddress: publisher.emailAddress,
+            website: publisher.website,
+        }));
     }
 
     async findOne(

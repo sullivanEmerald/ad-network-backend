@@ -35,6 +35,7 @@ export class AuthService {
             {
                 sub: user._id.toString(),
                 role: user.role,
+                accountType: user.accountType,
             },
             {
                 secret: this.configService.get('JWT_SECRET'),
