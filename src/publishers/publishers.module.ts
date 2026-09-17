@@ -5,12 +5,16 @@ import { PublishersService } from './publishers.service';
 import { Publisher, PublisherSchema, } from './schemas/publisher.schema';
 import { ReviveModule } from '../revive/revive.module';
 import { UsersModule } from '../users/users.module';
+import { ZoneModule } from '../zone/zone.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Publisher.name, schema: PublisherSchema, },]),
+    MongooseModule.forFeature([
+      { name: Publisher.name, schema: PublisherSchema },
+    ]),
     ReviveModule,
-    UsersModule
+    UsersModule,
+    ZoneModule,
   ],
   controllers: [PublishersController],
   providers: [PublishersService]

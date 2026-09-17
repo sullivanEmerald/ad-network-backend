@@ -21,15 +21,29 @@ export class ZoneService {
         private readonly reviveService: ReviveService,
     ) { }
 
+    async findByPublisherId(publisherId: string) {
+        const zones = await this.zoneModel
+            .find({ publisherId: new Types.ObjectId(publisherId) })
+            .lean();
+
+        return zones.map((zone) => ({
+            name: zone.name,
+            height: zone.height,
+            width: zone.width,
+            status: zone.status,
+        }));
+    }
+
     async create(
         dto: CreateZoneDto,
         publisherId: string,
         organisationId: string,
     ) {
+        const orgId = new Types.ObjectId(organisationId)
         const publisher = await this.publisherModel
             .findOne({
-                _id: publisherId,
-                organisationId,
+                _id: new Types.ObjectId(publisherId),
+                organisationId: orgId,
             })
             .exec();
 
@@ -48,12 +62,13 @@ export class ZoneService {
                 comments: dto.comments,
             });
         } catch (error) {
+            console.log("Revive Error", error)
             throw new BadRequestException(
                 'Zone not successfully created in the ad server',
             );
         }
 
-        return this.zoneModel.create({
+        const publisherZone = await this.zoneModel.create({
             publisherId: new Types.ObjectId(publisherId),
             name: dto.name,
             type: dto.type,
@@ -63,5 +78,15 @@ export class ZoneService {
             reviveZoneId: reviveZoneId,
             status: ZoneStatus.ACTIVE,
         });
+
+        return {
+            publisherId: publisherZone._id.toString(),
+            name: publisherZone.name,
+            type: publisherZone.type,
+            width: publisherZone.width,
+            height: publisherZone.height,
+            comments: publisherZone.comments,
+            status: publisherZone.status,
+        }
     }
 }

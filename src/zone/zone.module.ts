@@ -15,6 +15,7 @@ import { Zone, ZoneSchema } from './schema/zone.schema';
     ReviveModule,
   ],
   controllers: [ZoneController],
-  providers: [ZoneService]
+  providers: [ZoneService],
+  exports: [ZoneService]
 })
 export class ZoneModule { }

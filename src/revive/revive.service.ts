@@ -244,21 +244,32 @@ export class ReviveService implements OnModuleInit {
         comments?: string;
     }): Promise<number> {
         const sessionId = await this.ensureSession();
+        let zoneId: number
+        try {
 
-        return this.callApi<number>(
-            REVIVE_ZONE_METHODS.ADD,
-            [
-                sessionId,
-                {
-                    publisherId: dto.publisherId,
-                    zoneName: dto.zoneName,
-                    type: dto.type,
-                    width: dto.width,
-                    height: dto.height,
-                    comments: dto.comments ?? '',
-                },
-            ],
-        );
+            zoneId = await this.callApi<number>(
+                REVIVE_ZONE_METHODS.ADD,
+                [
+                    sessionId,
+                    {
+                        publisherId: dto.publisherId,
+                        zoneName: dto.zoneName,
+                        type: dto.type,
+                        width: dto.width,
+                        height: dto.height,
+                        comments: dto.comments ?? '',
+                    },
+                ],
+            );
+
+            return zoneId;
+        } catch (error) {
+            this.logger.error(
+                `Failed to configure zone for publisher ${dto.publisherId}`,
+                error,
+            );
+            throw error;
+        }
     }
 
     async getZone(zoneId: number): Promise<unknown> {

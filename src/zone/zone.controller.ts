@@ -23,6 +23,7 @@ export class ZoneController {
         @Body() dto: CreateZoneDto,
         @CurrentUser() user: AuthenticatedUser,
     ) {
+        console.log("zone", dto)
         return this.zoneService.create(dto, publisherId, user.userId);
     }
 }

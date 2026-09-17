@@ -12,6 +12,8 @@ import { CreatePublisherDto } from './dto/create-publisher.dto';
 import { PublishersService } from './publishers.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../auth/jwt/jwt-payload.interface';
+import { CreateZoneDto } from '../zone/dto/create-zone.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('publishers')
@@ -42,13 +44,24 @@ export class PublishersController {
     @Get(':publisherId')
     async findOne(
         @Param('publisherId') publisherId: string,
+        @CurrentUser() user: any
     ) {
-        const organisationId =
-            'CURRENT_ORGANISATION_ID';
 
         return this.publishersService.findOne(
-            organisationId,
+            user.userId,
             publisherId,
         );
     }
+
+    // @Post()
+    // async createZone(
+    //     @Body() dto: CreateZoneDto,
+    //     @CurrentUser() user: any
+    // ) {
+    //     return this.publishersService.createZone(
+    //         dto,
+    //         user.userId
+    //     );
+    // }
+
 }

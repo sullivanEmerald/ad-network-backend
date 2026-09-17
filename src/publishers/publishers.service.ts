@@ -16,6 +16,8 @@ import {
 import { CreatePublisherDto } from './dto/create-publisher.dto';
 import { ReviveService } from '../revive/revive.service';
 import { UsersService } from '../users/users.service';
+import { CreateZoneDto } from '../zone/dto/create-zone.dto';
+import { ZoneService } from '../zone/zone.service';
 
 @Injectable()
 export class PublishersService {
@@ -23,7 +25,8 @@ export class PublishersService {
         @InjectModel(Publisher.name)
         private readonly publisherModel: Model<PublisherDocument>,
         private readonly reviveService: ReviveService,
-        private readonly organisationalService: UsersService
+        private readonly organisationalService: UsersService,
+        private readonly zoneService: ZoneService,
     ) { }
 
     async create(
@@ -111,17 +114,16 @@ export class PublishersService {
         organisationId: string,
         publisherId: string,
     ) {
-        if (!Types.ObjectId.isValid(publisherId)) {
-            throw new BadRequestException(
-                'Invalid publisher ID',
-            );
-        }
 
-        const publisher =
-            await this.publisherModel.findOne({
-                _id: publisherId,
-                organisationId,
-            });
+        const publisherObjectId = new Types.ObjectId(publisherId);
+
+        const [publisher, publisherZones] = await Promise.all([
+            this.publisherModel.findOne({
+                _id: publisherObjectId,
+                organisationId: new Types.ObjectId(organisationId),
+            }),
+            this.zoneService.findByPublisherId(publisherId),
+        ]);
 
         if (!publisher) {
             throw new NotFoundException(
@@ -129,7 +131,14 @@ export class PublishersService {
             );
         }
 
-        return publisher;
+        return {
+            id: publisher._id.toString(),
+            name: publisher.name,
+            contactName: publisher.contactName,
+            emailAddress: publisher.emailAddress,
+            website: publisher.website,
+            zones: publisherZones,
+        };
     }
 }
 
