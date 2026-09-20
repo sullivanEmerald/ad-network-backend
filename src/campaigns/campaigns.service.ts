@@ -138,6 +138,8 @@ export class CampaignsService {
             campaignName: campaignData.campaignName,
             startDate: campaignData.startDate,
             endDate: campaignData.endDate,
+            status: campaignData.status,
+            isScheduled: new Date(campaignData.startDate).getTime() > Date.now(),
             id: _id.toString(),
         };
     }
@@ -255,7 +257,7 @@ export class CampaignsService {
             );
         }
 
-        campaign.status = CampaignStatus.CREATED;
+        campaign.status = CampaignStatus.LINKED;
         await campaign.save();
 
         return {

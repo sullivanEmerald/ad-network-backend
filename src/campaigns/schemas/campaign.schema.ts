@@ -4,10 +4,10 @@ import { HydratedDocument, Types } from 'mongoose';
 export type CampaignDocument = HydratedDocument<Campaign>;
 
 export enum CampaignStatus {
-    CREATED = 'draft',
+    CREATED = 'created',
     PENDING = 'pending',
+    LINKED = "linked",
     COMPLETED = "completed",
-    LINKED = "linked"
 }
 
 @Schema()

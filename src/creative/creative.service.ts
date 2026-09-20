@@ -19,6 +19,7 @@ import { UploadedImageFile } from './types/creative.types';
 import {
     Campaign,
     CampaignDocument,
+    CampaignStatus,
 } from '../campaigns/schemas/campaign.schema';
 
 @Injectable()
@@ -37,7 +38,16 @@ export class CreativeService {
         campaignId: string,
         dto: CreateCreativeDto,
         file: UploadedImageFile,
-    ): Promise<unknown> {
+    ): Promise<{
+        id: string;
+        campaignId: string;
+        name: string;
+        type: string;
+        src: string | undefined;
+        width: number;
+        height: number;
+        destinationUrl?: string;
+    }> {
         if (!Types.ObjectId.isValid(campaignId)) {
             throw new BadRequestException('Invalid campaign ID');
         }
@@ -105,6 +115,9 @@ export class CreativeService {
             );
         }
 
+        campaign.status = CampaignStatus.PENDING
+        await campaign.save();
+
         const creative = await this.creativeModel.create({
             campaignId: campaign._id,
             reviveCampaignId: campaign.reviveCampaignId,
@@ -121,8 +134,14 @@ export class CreativeService {
         });
 
         return {
-            ...creative,
-            campaignId: campaign._id,
+            id: creative._id.toString(),
+            campaignId: campaign._id.toString(),
+            name: creative.name,
+            type: creative.type,
+            src: creative?.fileName,
+            width,
+            height,
+            destinationUrl: creative.destinationUrl,
         };
     }
 
