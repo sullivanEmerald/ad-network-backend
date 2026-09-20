@@ -6,7 +6,8 @@ export type CampaignDocument = HydratedDocument<Campaign>;
 export enum CampaignStatus {
     CREATED = 'draft',
     PENDING = 'pending',
-    COMPLETED = "completed"
+    COMPLETED = "completed",
+    LINKED = "linked"
 }
 
 @Schema()

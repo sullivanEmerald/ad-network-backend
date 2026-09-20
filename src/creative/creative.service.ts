@@ -11,7 +11,7 @@ import {
     CreativeStatus,
     CreativeType,
 } from './schema/creative.schema';
-
+import { imageSize } from 'image-size';
 import { CreateCreativeDto } from './dto/create-creative.dto';
 import { ReviveService } from '../revive/revive.service';
 import { UploadedImageFile } from './types/creative.types';
@@ -71,6 +71,22 @@ export class CreativeService {
             );
         }
 
+
+        let width: number;
+        let height: number;
+        try {
+            const dimensions = imageSize(file.buffer);
+            if (!dimensions.width || !dimensions.height) {
+                throw new Error('Dimensions not found');
+            }
+            width = dimensions.width;
+            height = dimensions.height;
+        } catch (error) {
+            throw new BadRequestException(
+                'Could not determine image dimensions — file may be corrupt',
+            );
+        }
+
         let reviveBannerId: number;
 
         try {
@@ -80,6 +96,8 @@ export class CreativeService {
                 imageFilename: file.originalname,
                 imageContent: file.buffer,
                 destinationUrl: dto.destinationUrl,
+                width,
+                height,
             });
         } catch (error) {
             throw new BadRequestException(
@@ -95,8 +113,8 @@ export class CreativeService {
             destinationUrl: dto.destinationUrl,
             fileName: file.originalname,
             mimeType: file.mimetype,
-            width: undefined,
-            height: undefined,
+            width: width,
+            height: height,
             reviveBannerId,
             reviveStorageType: 'web',
             status: CreativeStatus.ACTIVE,

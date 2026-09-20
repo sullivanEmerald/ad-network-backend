@@ -8,6 +8,11 @@ export enum ZoneStatus {
     INACTIVE = 'INACTIVE',
 }
 
+export enum LinkingMode {
+    automatic = 'automatic',
+    manual = 'manual',
+}
+
 @Schema({
     timestamps: true,
     collection: 'zones',
@@ -44,6 +49,15 @@ export class Zone {
         trim: true,
     })
     type!: string;
+
+
+    @Prop({
+        required: true,
+        trim: true,
+        enum: LinkingMode,
+        default: LinkingMode.automatic,
+    })
+    linkingMode!: LinkingMode;
 
     /**
      * Width of the advertising placement in pixels.

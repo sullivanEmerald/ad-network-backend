@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Patch } from '@nestjs/common';
 import { CampaignsService } from './campaigns.service';
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { UseGuards } from "@nestjs/common";
@@ -56,6 +56,11 @@ export class CampaignsController {
         console.log('fetching draft', id)
         const campaign = await this.campaignsService.findDraftById(id, user.userId);
         return campaign;
+    }
+
+    @Patch(':campaignId/launch')
+    async launchCampaign(@Param('campaignId') campaignId: string) {
+        return this.campaignsService.finalLaunch(campaignId)
     }
 
 }

@@ -7,6 +7,12 @@ import { Advertiser, AdvertiserSchema } from '../advertisers/schema/advertiser.s
 import { User, UserSchema } from '../users/schemas/user.schema';
 import { ReviveModule } from '../revive/revive.module';
 import { Creative, CreativeSchema } from '../creative/schema/creative.schema';
+import { Zone, ZoneSchema } from '../zone/schema/zone.schema';
+import {
+    CampaignZoneLink,
+    CampaignZoneLinkSchema,
+} from './schemas/campaign-zone.link';
+import { TargetingService } from './targeting.service';
 
 @Module({
     imports: [
@@ -15,10 +21,13 @@ import { Creative, CreativeSchema } from '../creative/schema/creative.schema';
             { name: Advertiser.name, schema: AdvertiserSchema },
             { name: User.name, schema: UserSchema },
             { name: Creative.name, schema: CreativeSchema },
+            { name: Zone.name, schema: ZoneSchema },
+            { name: CampaignZoneLink.name, schema: CampaignZoneLinkSchema },
         ]),
         ReviveModule,
     ],
     controllers: [CampaignsController],
-    providers: [CampaignsService],
+    providers: [CampaignsService, TargetingService],
+    exports: [TargetingService],
 })
 export class CampaignsModule { }

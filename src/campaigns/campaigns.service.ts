@@ -8,6 +8,7 @@ import { LaunchCampaignDto } from './dto/campaign.dto';
 import { ReviveService } from '../revive/revive.service';
 import { CampaignStatus } from './schemas/campaign.schema';
 import { Creative, CreativeDocument } from '../creative/schema/creative.schema';
+import { TargetingService } from './targeting.service';
 
 @Injectable()
 export class CampaignsService {
@@ -20,7 +21,8 @@ export class CampaignsService {
         private readonly organizationModel: Model<UserDocument>,
         @InjectModel(Creative.name)
         private readonly creativeModel: Model<CreativeDocument>,
-        private readonly reviveService: ReviveService
+        private readonly reviveService: ReviveService,
+        private readonly targetingService: TargetingService
     ) { }
 
     async lanuchCampaign(dto: LaunchCampaignDto, userId: string) {
@@ -217,5 +219,49 @@ export class CampaignsService {
         }
 
         return campaign;
+    }
+
+    async finalLaunch(campaignId: string) {
+        const newCampaignId = new Types.ObjectId(campaignId)
+        const campaign = await this.campaignModel.findById(newCampaignId);
+        if (!campaign) {
+            throw new NotFoundException('Campaign not found');
+        }
+
+        if (!campaign.reviveCampaignId) {
+            throw new BadRequestException(
+                'Campaign has not been synchronized with Revive',
+            );
+        }
+
+        const creativeCount = await this.creativeModel.countDocuments({
+            campaignId: campaign._id,
+        });
+
+        if (creativeCount === 0) {
+            throw new BadRequestException(
+                'Campaign needs at least one banner before it can launch',
+            );
+        }
+
+        const { linked, failed } = await this.targetingService.applyAutomaticLinking(
+            campaign._id as Types.ObjectId,
+            campaign.reviveCampaignId,
+        );
+
+        if (linked === 0) {
+            throw new BadRequestException(
+                'No matching zones available — campaign not launched',
+            );
+        }
+
+        campaign.status = CampaignStatus.CREATED;
+        await campaign.save();
+
+        return {
+            status: campaign.status,
+            zonesLinked: linked,
+            zonesFailed: failed,
+        };
     }
 }

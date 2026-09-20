@@ -112,6 +112,8 @@ export class ReviveService implements OnModuleInit {
         imageFilename: string;
         imageContent: Buffer;
         destinationUrl: string;
+        width: number,
+        height: number
     }) {
         const sessionId = await this.ensureSession();
 
@@ -126,6 +128,8 @@ export class ReviveService implements OnModuleInit {
                         aImage: { filename: dto.imageFilename, content: dto.imageContent, },
                         url: dto.destinationUrl,
                         weight: 1,
+                        width: dto.width,
+                        height: dto.height,
                         target: '_blank',
                         status: 0,
                     },
@@ -377,5 +381,39 @@ export class ReviveService implements OnModuleInit {
             REVIVE_ZONE_METHODS.UNLINK_CAMPAIGN,
             [sessionId, zoneId, campaignId],
         );
+    }
+
+    // LINKING CAMPAIGN TO BANNERS
+
+    async linkCampaignToZone(zoneId: number, campaignId: number): Promise<boolean> {
+        const sessionId = await this.ensureSession();
+        try {
+            return await this.callApi<boolean>(
+                REVIVE_CAMPAIGN_METHODS.LINK_CAMPAIGN,
+                [sessionId, zoneId, campaignId],
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to link campaign ${campaignId} to zone ${zoneId}`,
+                error,
+            );
+            throw error;
+        }
+    }
+
+    async unlinkCampaignFromZone(zoneId: number, campaignId: number): Promise<boolean> {
+        const sessionId = await this.ensureSession();
+        try {
+            return await this.callApi<boolean>(
+                REVIVE_CAMPAIGN_METHODS.UNLINK_CAMPAIGN,
+                [sessionId, zoneId, campaignId],
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to unlink campaign ${campaignId} from zone ${zoneId}`,
+                error,
+            );
+            throw error;
+        }
     }
 }

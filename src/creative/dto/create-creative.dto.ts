@@ -9,13 +9,9 @@ export class CreateCreativeDto {
     destinationUrl!: string;
 
     @IsOptional()
-    @IsInt()
-    @Min(1)
-    width?: number;
+    width?: string;
 
     @IsOptional()
-    @IsInt()
-    @Min(1)
-    height?: number;
+    height?: string;
 }
 
