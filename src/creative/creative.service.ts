@@ -37,7 +37,7 @@ export class CreativeService {
         campaignId: string,
         dto: CreateCreativeDto,
         file: UploadedImageFile,
-    ) {
+    ): Promise<unknown> {
         if (!Types.ObjectId.isValid(campaignId)) {
             throw new BadRequestException('Invalid campaign ID');
         }
@@ -58,11 +58,6 @@ export class CreativeService {
             );
         }
 
-        /**
-         * 3. Basic image validation.
-         *
-         * Keep this whitelist small for the MVP.
-         */
         const allowedMimeTypes = [
             'image/jpeg',
             'image/png',
@@ -107,7 +102,10 @@ export class CreativeService {
             status: CreativeStatus.ACTIVE,
         });
 
-        return creative;
+        return {
+            ...creative,
+            campaignId: campaign._id,
+        };
     }
 
     async getBanners(campaignId: string) {

@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Campaign, CampaignDocument, CampaignStatus as CampaignDbStatus } from './schemas/campaign.schema';
+import { Campaign, CampaignDocument } from './schemas/campaign.schema';
 import { Advertiser, AdvertiserDocument } from '../advertisers/schema/advertiser.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { LaunchCampaignDto } from './dto/campaign.dto';
 import { ReviveService } from '../revive/revive.service';
+import { CampaignStatus } from './schemas/campaign.schema';
+import { Creative, CreativeDocument } from '../creative/schema/creative.schema';
 
 @Injectable()
 export class CampaignsService {
@@ -16,6 +18,8 @@ export class CampaignsService {
         private readonly advertiserModel: Model<AdvertiserDocument>,
         @InjectModel(User.name)
         private readonly organizationModel: Model<UserDocument>,
+        @InjectModel(Creative.name)
+        private readonly creativeModel: Model<CreativeDocument>,
         private readonly reviveService: ReviveService
     ) { }
 
@@ -44,32 +48,32 @@ export class CampaignsService {
                 'End date must be after start date.',
             );
         }
-        const campaignId = await this.reviveService.addCampaign({
+        let reviveCampaignId: number;
+        try {
+            reviveCampaignId = await this.reviveService.addCampaign({
+                advertiserId: advertiser.reviveAdvertiserId,
+                campaignName: dto.campaignName,
+                startDate: startDate,
+                endDate: endDate
+            });
+        } catch (error) {
+            console.log(error)
+            throw new BadRequestException('Failed to create campaign')
+        }
+
+        const campaign = await this.campaignModel.create({
+            organizationId: new Types.ObjectId(organisationalId),
             advertiserId: advertiser.reviveAdvertiserId,
             campaignName: dto.campaignName,
-            startDate: startDate,
-            endDate: endDate
-
-        });
-
-        return this.campaignModel.create({
-            organizationId: organisationalId,
-            advertiserId: advertiser._id,
-            campaignName: dto.campaignName,
-            objective: dto.objective,
-            geo: dto.geo,
-            devices: dto.devices,
-            budgetType: dto.budgetType,
-            budgetAmount: dto.budgetAmount,
+            reviveCampaignId: reviveCampaignId,
             startDate,
             endDate,
-            draftId: dto.draftId ?? null,
-            pacing: dto.pacing,
-            status: dto.status === 'active'
-                ? CampaignDbStatus.ACTIVE
-                : CampaignDbStatus.DRAFT,
-            reviveCampaignId: campaignId,
         });
+
+        return {
+            message: "Campaign Created Successfully",
+            campaignId: campaign._id
+        };
 
     }
 
@@ -99,13 +103,51 @@ export class CampaignsService {
         return this.transformCampaign(campaign);
     }
 
+    async getCampaignSummary(campaignId: string, userId: string): Promise<unknown> {
+        const organizationId = this.toObjectId(userId);
+        const campaign = await this.campaignModel
+            .findOne({ _id: this.toObjectId(campaignId), organizationId })
+            .lean()
+            .exec();
+
+        if (!campaign) {
+            throw new NotFoundException('Campaign not found');
+        }
+
+        const banners = await this.creativeModel
+            .findOne({ campaignId: campaign._id })
+            .lean()
+            .exec();
+
+        if (!banners) {
+            throw new NotFoundException('No banner found');
+        }
+
+        return {
+            campaign: this.transformCampaign(campaign),
+            banners: this.transformBanner(banners)
+        };
+    }
+
     private transformCampaign(campaign: CampaignDocument | Record<string, any>) {
         const { _id, ...campaignData } = campaign as any;
 
         return {
-            ...campaignData,
+            campaignName: campaignData.campaignName,
+            startDate: campaignData.startDate,
+            endDate: campaignData.endDate,
             id: _id.toString(),
-            isSchedule: new Date(campaignData.startDate).getTime() > Date.now(),
+        };
+    }
+
+    private transformBanner(Banner: CreativeDocument | Record<string, any>) {
+        const { _id, ...banner } = Banner as any;
+
+        return {
+            name: banner.name,
+            destinationUrl: banner.destinationUrl,
+            file: banner.fileName,
+            id: _id.toString(),
         };
     }
 
@@ -147,6 +189,9 @@ export class CampaignsService {
         if (!advertiser) {
             throw new NotFoundException('Advertiser not found for this organization');
         }
+        if (advertiser.reviveAdvertiserId == null) {
+            throw new NotFoundException('Advertiser is not linked to Revive');
+        }
 
         // const startDate = new Date(dto?.startDate);
         // const endDate = dto.endDate ? new Date(dto.endDate) : undefined;
@@ -154,38 +199,14 @@ export class CampaignsService {
         //     throw new BadRequestException('End date must be after start date.');
         // }
 
-        const draftData = {
+        return this.campaignModel.create({
             organizationId,
-            advertiserId: advertiser._id,
+            advertiserId: advertiser.reviveAdvertiserId,
             campaignName: dto.campaignName,
-            objective: dto?.objective,
-            geo: dto?.geo,
-            devices: dto?.devices,
-            budgetType: dto?.budgetType,
-            budgetAmount: dto?.budgetAmount,
-            startDate: dto?.startDate,
-            endDate: dto?.endDate,
-            draftId: dto?.draftId ?? null,
-            pacing: dto?.pacing,
-            status: CampaignDbStatus.DRAFT,
-        };
-
-        if (dto.draftId) {
-            const draftId = this.toObjectId(dto.draftId);
-            const existingDraft = await this.campaignModel
-                .findOne({ _id: draftId, organizationId, status: CampaignDbStatus.DRAFT })
-                .exec();
-
-            if (!existingDraft) {
-                throw new NotFoundException('Draft not found');
-            }
-
-            return this.campaignModel
-                .findByIdAndUpdate(existingDraft._id, { $set: draftData }, { new: true, runValidators: true })
-                .exec();
-        }
-
-        return this.campaignModel.create(draftData);
+            startDate: dto.startDate,
+            endDate: dto.endDate,
+            status: dto.status ?? CampaignStatus.CREATED,
+        });
     }
 
     async findDraftById(id: string, userId: string) {

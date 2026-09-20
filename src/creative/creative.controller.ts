@@ -34,7 +34,8 @@ export class CreativeController {
         @Param('campaignId') campaignId: string,
         @Body() dto: CreateCreativeDto,
         @UploadedFile() file: creativeTypes.UploadedImageFile,
-    ) {
+    ): Promise<unknown> {
+        console.log("dto for uploading creative", dto)
         return this.creativeService.create(
             campaignId,
             dto,
@@ -47,7 +48,6 @@ export class CreativeController {
         const banners = await this.creativeService.getBanners(
             campaignId,
         )
-
         console.log(banners)
         return banners;
     }

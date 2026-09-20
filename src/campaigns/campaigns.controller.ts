@@ -24,6 +24,14 @@ export class CampaignsController {
         return this.campaignsService.getCampaigns(user.userId);
     }
 
+    @Get(':campaignId/summary')
+    getCampaignSummary(
+        @Param('campaignId') campaignId: string,
+        @CurrentUser() user: any,
+    ) {
+        return this.campaignsService.getCampaignSummary(campaignId, user.userId);
+    }
+
     @Get(':id')
     getCampaignById(@Param('id') id: string, @CurrentUser() user: any) {
         return this.campaignsService.getCampaignById(id, user.userId);
