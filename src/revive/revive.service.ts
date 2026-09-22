@@ -387,6 +387,9 @@ export class ReviveService implements OnModuleInit {
 
     async linkCampaignToZone(zoneId: number, campaignId: number): Promise<boolean> {
         const sessionId = await this.ensureSession();
+
+        console.log("campaign zone and campaign Id", zoneId, campaignId)
+
         try {
             return await this.callApi<boolean>(
                 REVIVE_CAMPAIGN_METHODS.LINK_CAMPAIGN,
@@ -414,6 +417,40 @@ export class ReviveService implements OnModuleInit {
                 error,
             );
             throw error;
+        }
+    }
+
+    // Generating Zone Tags
+    async generateZoneTag(
+        zoneId: number,
+        codeType: string,
+        params: {},
+    ): Promise<unknown> {
+        const sessionId = await this.login();
+
+        try {
+            const result = await this.callApi<string>(
+                REVIVE_CAMPAIGN_METHODS.GENERATE_TAGS,
+                [
+                    sessionId,
+                    zoneId,
+                    codeType,
+                    params ?? {},
+                ],
+            );
+
+            if (typeof result !== 'string' || !result.trim()) {
+                throw new Error('Revive returned an empty ad tag');
+            }
+
+            console.log(result)
+
+            return result;
+        } catch (error) {
+            this.logger.error(
+                `Failed to generate tag`,
+                error,
+            );
         }
     }
 }

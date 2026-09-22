@@ -15,7 +15,7 @@ import { ZoneService } from './zone.service';
 @UseGuards(JwtAuthGuard)
 @Controller('zone')
 export class ZoneController {
-    constructor(private readonly zoneService: ZoneService) { }
+    constructor(private readonly zonesService: ZoneService) { }
 
     @Post(':publisherId')
     async create(
@@ -24,6 +24,20 @@ export class ZoneController {
         @CurrentUser() user: AuthenticatedUser,
     ) {
         console.log("zone", dto)
-        return this.zoneService.create(dto, publisherId, user.userId);
+        return this.zonesService.create(dto, publisherId, user.userId);
+    }
+
+    @Post(':zoneId/tag')
+    async generateTag(
+        @Param('zoneId') zoneId: string,
+        @CurrentUser() user: AuthenticatedUser,
+        @Body() dto: { codeType?: string },
+    ) {
+        console.log(dto)
+        return this.zonesService.generateTag(
+            zoneId,
+            user.userId,
+            dto.codeType,
+        );
     }
 }

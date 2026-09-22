@@ -10,6 +10,10 @@ import { Publisher, PublisherDocument } from '../publishers/schemas/publisher.sc
 import { ReviveService } from '../revive/revive.service';
 import { CreateZoneDto } from './dto/create-zone.dto';
 import { Zone, ZoneDocument, ZoneStatus } from './schema/zone.schema';
+import {
+    CampaignZoneLink,
+    LinkStatus,
+} from '../campaigns/schemas/campaign-zone.link';
 
 @Injectable()
 export class ZoneService {
@@ -18,6 +22,8 @@ export class ZoneService {
         private readonly zoneModel: Model<ZoneDocument>,
         @InjectModel(Publisher.name)
         private readonly publisherModel: Model<PublisherDocument>,
+        @InjectModel(CampaignZoneLink.name)
+        private readonly campaignZoneLinkModel: Model<CampaignZoneLink>,
         private readonly reviveService: ReviveService,
     ) { }
 
@@ -26,12 +32,17 @@ export class ZoneService {
             .find({ publisherId: new Types.ObjectId(publisherId) })
             .lean();
 
-        return zones.map((zone) => ({
+        return Promise.all(zones.map(async (zone) => ({
+            id: zone._id.toString(),
             name: zone.name,
             height: zone.height,
             width: zone.width,
             status: zone.status,
-        }));
+            campaignsCount: await this.campaignZoneLinkModel.countDocuments({
+                zoneId: zone._id,
+                status: LinkStatus.ACTIVE,
+            }),
+        })));
     }
 
     async create(
@@ -88,5 +99,51 @@ export class ZoneService {
             comments: publisherZone.comments,
             status: publisherZone.status,
         }
+    }
+
+
+    async generateTag(
+        zoneId: string,
+        organisationId: string,
+        codeType = 'adjs',
+    ) {
+        if (
+            !Types.ObjectId.isValid(zoneId) ||
+            !Types.ObjectId.isValid(organisationId)
+        ) {
+            throw new NotFoundException('Zone not found');
+        }
+
+        const zone = await this.zoneModel.findById(new Types.ObjectId(zoneId));
+
+        if (!zone) {
+            throw new NotFoundException('Zone not found');
+        }
+
+        const publisher = await this.publisherModel.findOne({
+            _id: zone.publisherId,
+            organisationId: new Types.ObjectId(organisationId),
+        });
+
+        if (!publisher) {
+            throw new NotFoundException('Zone not found');
+        }
+
+        if (!zone.reviveZoneId) {
+            throw new BadRequestException(
+                'Zone has not been provisioned in Revive',
+            );
+        }
+
+        const tag = await this.reviveService.generateZoneTag(
+            zone.reviveZoneId,
+            codeType,
+            {},
+        );
+
+        return {
+            tag,
+            codeType,
+        };
     }
 }
