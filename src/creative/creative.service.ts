@@ -48,9 +48,6 @@ export class CreativeService {
         height: number;
         destinationUrl?: string;
     }> {
-        if (!Types.ObjectId.isValid(campaignId)) {
-            throw new BadRequestException('Invalid campaign ID');
-        }
 
         if (!file) {
             throw new BadRequestException('Creative image is required');

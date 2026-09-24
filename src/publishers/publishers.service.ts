@@ -34,76 +34,71 @@ export class PublishersService {
         userId: string,
     ) {
 
-        const organisationalProfile = await this.organisationalService.findOrganisationById(userId)
+        // const organisationalProfile = await this.organisationalService.findOrganisationById(userId)
 
-        if (!organisationalProfile) {
-            throw new BadRequestException("Organisational is not registered with us")
-        }
+        // if (!organisationalProfile) {
+        //     throw new BadRequestException("Organisational is not registered with us")
+        // }
 
-        let revivePublisherId: number;
+        // let revivePublisherId: number;
 
-        try {
-            revivePublisherId =
-                await this.reviveService.addPublisher({
-                    agencyId: organisationalProfile.reviveAgencyId,
+        // try {
+        //     revivePublisherId =
+        //         await this.reviveService.addPublisher({
+        //             agencyId: organisationalProfile.reviveAgencyId,
 
-                    publisherName: dto.name,
+        //             publisherName: dto.name,
 
-                    contactName: dto.contactName,
+        //             contactName: dto.contactName,
 
-                    emailAddress: dto.emailAddress,
+        //             emailAddress: dto.emailAddress,
 
-                    website: dto.website,
+        //             website: dto.website,
 
-                    comments: dto.comments,
-                });
-        } catch (error) {
-            throw new BadRequestException(
-                'Publisher could not be created in the ad server',
-            );
-        }
-        const publisher =
-            await this.publisherModel.create({
-                organisationId: new Types.ObjectId(
-                    userId,
-                ),
+        //             comments: dto.comments,
+        //         });
+        // } catch (error) {
+        //     throw new BadRequestException(
+        //         'Publisher could not be created in the ad server',
+        //     );
+        // }
+        // const publisher = await this.publisherModel.findOneAndUpdate(
+        //     { _id: new Types.ObjectId(userId) },
+        //     {
+        //         publisherName: dto.name,
+        //         website: dto.website,
+        //         contactName: dto.contactName,
+        //         emailAddress: dto.emailAddress,
+        //         revivePublisherId,
+        //         status: PublisherStatus.ACTIVE,
+        //         comments: dto.comments,
+        //     },
+        //     { new: true, runValidators: true },
+        // ).exec();
 
-                name: dto.name,
+        // if (!publisher) {
+        //     throw new BadRequestException('Publisher account was not found');
+        // }
 
-                website: dto.website,
-
-                contactName: dto.contactName,
-
-                emailAddress: dto.emailAddress,
-
-                reviveAgencyId: organisationalProfile.reviveAgencyId,
-
-                revivePublisherId,
-
-                status: PublisherStatus.ACTIVE,
-
-                comments: dto.comments,
-            });
-
-        return {
-            id: publisher._id.toString(),
-            name: publisher.name,
-            contactName: publisher.contactName,
-            emailAddress: publisher.emailAddress,
-            website: publisher.website,
-        };
+        // return {
+        //     id: publisher._id.toString(),
+        //     name: publisher.publisherName,
+        //     contactName: publisher.contactName,
+        //     emailAddress: publisher.emailAddress,
+        //     website: publisher.website,
+        // };
     }
 
     async findByOrganisation(userId: string) {
         const organisationId = new Types.ObjectId(userId)
         const organisationalPublishers = await this.publisherModel
-            .find({ organisationId })
+            .find({ _id: organisationId })
             .sort({ createdAt: -1 })
             .lean();
 
         return organisationalPublishers.map((publisher) => ({
             id: publisher._id.toString(),
-            name: publisher.name,
+            name: publisher.publisherName,
             contactName: publisher.contactName,
             emailAddress: publisher.emailAddress,
             website: publisher.website,
@@ -120,7 +115,6 @@ export class PublishersService {
         const [publisher, publisherZones] = await Promise.all([
             this.publisherModel.findOne({
                 _id: publisherObjectId,
-                organisationId: new Types.ObjectId(organisationId),
             }),
             this.zoneService.findByPublisherId(publisherId),
         ]);
@@ -133,7 +127,7 @@ export class PublishersService {
 
         return {
             id: publisher._id.toString(),
-            name: publisher.name,
+            name: publisher.publisherName,
             contactName: publisher.contactName,
             emailAddress: publisher.emailAddress,
             website: publisher.website,

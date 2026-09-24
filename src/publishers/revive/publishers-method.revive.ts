@@ -13,3 +13,11 @@ export const REVIVE_PUBLISHER_METHODS = {
     BANNER_STATISTICS: 'ox.publisherBannerStatistics',
 } as const;
 
+
+export const REVIVE_TAG_CODE_TYPES = {
+    IFRAME: 'invocationTags:oxInvocationTags:adframe',
+    JAVASCRIPT: 'invocationTags:oxInvocationTags:adjs',
+    NO_COOKIE_IMAGE: 'invocationTags:oxInvocationTags:adviewnocookies',
+    ASYNC_JS: 'invocationTags:oxInvocationTags:async', // recommended default
+};
+

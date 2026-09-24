@@ -1,20 +1,24 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
 import { AdvertiserStatus } from '../enums/adveriser-status.enum';
+import { User } from '../../users/schemas/user.schema';
+import { UserDocument } from '../../users/schemas/user.schema';
 
 export type AdvertiserDocument = HydratedDocument<Advertiser>;
 
-@Schema({
-    timestamps: true,
-    collection: 'advertisers',
-})
-export class Advertiser {
+export type AdvertiserUserDocument = UserDocument & {
+    reviveAdvertiserId?: number | null;
+};
+
+@Schema()
+export class Advertiser extends User {
     @Prop({
-        type: Types.ObjectId,
-        ref: 'User',
         required: true,
+        trim: true,
+        minlength: 2,
+        maxlength: 150,
     })
-    organizationId!: Types.ObjectId;
+    advertiserName!: string;
 
     @Prop({
         required: true,
@@ -22,15 +26,7 @@ export class Advertiser {
         minlength: 2,
         maxlength: 150,
     })
-    name!: string;
-
-    @Prop({
-        required: true,
-        trim: true,
-        minlength: 2,
-        maxlength: 150,
-    })
-    email!: string;
+    advertiserEmail!: string;
 
     @Prop({
         type: String,
@@ -49,11 +45,3 @@ export class Advertiser {
 }
 
 export const AdvertiserSchema = SchemaFactory.createForClass(Advertiser);
-
-/**
- * One advertiser profile per organization.
- */
-AdvertiserSchema.index(
-    { organizationId: 1 },
-    { unique: true },
-);

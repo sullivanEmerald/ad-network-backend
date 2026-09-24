@@ -23,9 +23,7 @@ export class AdvertisersRepository {
     async findByOrganizationId(
         organizationId: string | Types.ObjectId,
     ): Promise<AdvertiserDocument | null> {
-        return this.advertiserModel
-            .findOne({ organizationId })
-            .exec();
+        return this.advertiserModel.findById(organizationId).exec();
     }
 
     async create(data: {
@@ -34,9 +32,15 @@ export class AdvertisersRepository {
         email: string;
         reviveAdvertiserId: number
     }): Promise<AdvertiserDocument> {
-        const advertiser = new this.advertiserModel(data);
-
-        return advertiser.save();
+        return this.advertiserModel.findByIdAndUpdate(
+            data.organizationId,
+            {
+                advertiserName: data.name,
+                advertiserEmail: data.email,
+                reviveAdvertiserId: data.reviveAdvertiserId,
+            },
+            { new: true, runValidators: true },
+        ).exec() as Promise<AdvertiserDocument>;
     }
 
     async update(

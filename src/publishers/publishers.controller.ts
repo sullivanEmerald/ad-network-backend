@@ -35,33 +35,18 @@ export class PublishersController {
 
     @Get()
     async findAll(@CurrentUser() user: any) {
-
         return this.publishersService.findByOrganisation(
             user.userId,
         );
     }
-
     @Get(':publisherId')
     async findOne(
         @Param('publisherId') publisherId: string,
         @CurrentUser() user: any
     ) {
-
         return this.publishersService.findOne(
             user.userId,
             publisherId,
         );
     }
-
-    // @Post()
-    // async createZone(
-    //     @Body() dto: CreateZoneDto,
-    //     @CurrentUser() user: any
-    // ) {
-    //     return this.publishersService.createZone(
-    //         dto,
-    //         user.userId
-    //     );
-    // }
-
 }

@@ -1,6 +1,7 @@
 import {
     Body,
     Controller,
+    Get,
     Param,
     Post,
     UseGuards,
@@ -17,14 +18,19 @@ import { ZoneService } from './zone.service';
 export class ZoneController {
     constructor(private readonly zonesService: ZoneService) { }
 
-    @Post(':publisherId')
+    @Get()
+    async findPublisherZones(@CurrentUser() user: AuthenticatedUser) {
+        return this.zonesService.findByPublisherId(user.userId);
+    }
+
+    @Post()
     async create(
-        @Param('publisherId') publisherId: string,
         @Body() dto: CreateZoneDto,
         @CurrentUser() user: AuthenticatedUser,
     ) {
         console.log("zone", dto)
-        return this.zonesService.create(dto, publisherId, user.userId);
+        console.log("publisherId", user.userId)
+        return this.zonesService.create(dto, user.userId);
     }
 
     @Post(':zoneId/tag')
@@ -39,5 +45,12 @@ export class ZoneController {
             user.userId,
             dto.codeType,
         );
+    }
+
+    @Get("campaigns/:zoneId")
+    async getZoneCampaigns(
+        @Param("zoneId") zoneId: string,
+    ) {
+        return this.zonesService.getZoneCampaigns(zoneId)
     }
 }

@@ -18,14 +18,14 @@ export class Campaign {
         required: true,
         index: true,
     })
-    organizationId!: Types.ObjectId;
+    advertiser!: Types.ObjectId;
 
     @Prop({
         type: Number,
         required: true,
         index: true,
     })
-    advertiserId!: number;
+    advertiserReviveId!: number;
 
     @Prop({
         required: true,

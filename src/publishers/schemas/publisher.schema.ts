@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument } from 'mongoose';
+import { User } from '../../users/schemas/user.schema';
+import { UserDocument } from '../../users/schemas/user.schema';
 
 export type PublisherDocument = HydratedDocument<Publisher>;
 
@@ -9,19 +11,12 @@ export enum PublisherStatus {
     PENDING = 'PENDING',
 }
 
-@Schema({
-    timestamps: true,
-    collection: 'publishers',
-})
-export class Publisher {
-    @Prop({
-        type: Types.ObjectId,
-        ref: 'Organisation',
-        required: true,
-        index: true,
-    })
-    organisationId!: Types.ObjectId;
+export type PublisherUserDocument = UserDocument & {
+    revivePublisherId?: number;
+};
 
+@Schema()
+export class Publisher extends User {
     /**
      * Publisher name displayed in Custex.
      */
@@ -29,7 +24,7 @@ export class Publisher {
         required: true,
         trim: true,
     })
-    name!: string;
+    publisherName!: string;
 
     /**
      * Publisher's website.
@@ -58,18 +53,6 @@ export class Publisher {
         lowercase: true,
     })
     emailAddress!: string;
-
-    /**
-     * Revive agency this publisher belongs to.
-     *
-     * Revive calls organisations "agencies".
-     */
-    @Prop({
-        type: Number,
-        required: true,
-        index: true,
-    })
-    reviveAgencyId!: number;
 
     /**
      * Publisher ID returned by Revive's

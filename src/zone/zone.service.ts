@@ -7,6 +7,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
 import { Publisher, PublisherDocument } from '../publishers/schemas/publisher.schema';
+import { User, UserDocument } from '../users/schemas/user.schema';
 import { ReviveService } from '../revive/revive.service';
 import { CreateZoneDto } from './dto/create-zone.dto';
 import { Zone, ZoneDocument, ZoneStatus } from './schema/zone.schema';
@@ -14,6 +15,9 @@ import {
     CampaignZoneLink,
     LinkStatus,
 } from '../campaigns/schemas/campaign-zone.link';
+import { PublisherUserDocument } from '../publishers/schemas/publisher.schema';
+import { TargetingService } from '../campaigns/targeting.service';
+
 
 @Injectable()
 export class ZoneService {
@@ -22,12 +26,26 @@ export class ZoneService {
         private readonly zoneModel: Model<ZoneDocument>,
         @InjectModel(Publisher.name)
         private readonly publisherModel: Model<PublisherDocument>,
+        @InjectModel(User.name)
+        private readonly userModel: Model<UserDocument>,
         @InjectModel(CampaignZoneLink.name)
         private readonly campaignZoneLinkModel: Model<CampaignZoneLink>,
         private readonly reviveService: ReviveService,
+        private readonly targetingService: TargetingService
     ) { }
 
     async findByPublisherId(publisherId: string) {
+        const publisher = await this.userModel
+            .findOne({
+                _id: new Types.ObjectId(publisherId),
+                accountType: 'Publisher',
+            })
+            .exec();
+
+        if (!publisher) {
+            throw new NotFoundException('Publisher not found');
+        }
+
         const zones = await this.zoneModel
             .find({ publisherId: new Types.ObjectId(publisherId) })
             .lean();
@@ -38,6 +56,7 @@ export class ZoneService {
             height: zone.height,
             width: zone.width,
             status: zone.status,
+            type: zone.type,
             campaignsCount: await this.campaignZoneLinkModel.countDocuments({
                 zoneId: zone._id,
                 status: LinkStatus.ACTIVE,
@@ -48,18 +67,20 @@ export class ZoneService {
     async create(
         dto: CreateZoneDto,
         publisherId: string,
-        organisationId: string,
     ) {
-        const orgId = new Types.ObjectId(organisationId)
-        const publisher = await this.publisherModel
+        const publisher = await this.userModel
             .findOne({
                 _id: new Types.ObjectId(publisherId),
-                organisationId: orgId,
+                accountType: 'Publisher',
             })
-            .exec();
+            .exec() as unknown as PublisherUserDocument | null;
 
         if (!publisher) {
             throw new NotFoundException('Publisher not found');
+        }
+
+        if (publisher.revivePublisherId == null) {
+            throw new BadRequestException('Publisher is not linked to Revive');
         }
 
         let reviveZoneId: number;
@@ -104,16 +125,9 @@ export class ZoneService {
 
     async generateTag(
         zoneId: string,
-        organisationId: string,
-        codeType = 'adjs',
+        userId: string,
+        codeType: string | undefined,
     ) {
-        if (
-            !Types.ObjectId.isValid(zoneId) ||
-            !Types.ObjectId.isValid(organisationId)
-        ) {
-            throw new NotFoundException('Zone not found');
-        }
-
         const zone = await this.zoneModel.findById(new Types.ObjectId(zoneId));
 
         if (!zone) {
@@ -121,8 +135,8 @@ export class ZoneService {
         }
 
         const publisher = await this.publisherModel.findOne({
-            _id: zone.publisherId,
-            organisationId: new Types.ObjectId(organisationId),
+            _id: userId,
+            accountType: "Publisher",
         });
 
         if (!publisher) {
@@ -145,5 +159,16 @@ export class ZoneService {
             tag,
             codeType,
         };
+    }
+
+    async getZoneCampaigns(zoneId: string) {
+        const zone = await this.zoneModel.findById(new Types.ObjectId(zoneId))
+
+        if (!zone) {
+            throw new NotFoundException("Zone not found")
+        }
+
+        return this.targetingService.findEligibleCampaignsForZone(zone, zoneId)
+
     }
 }

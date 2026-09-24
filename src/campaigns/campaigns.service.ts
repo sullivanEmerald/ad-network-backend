@@ -2,23 +2,21 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Campaign, CampaignDocument } from './schemas/campaign.schema';
-import { Advertiser, AdvertiserDocument } from '../advertisers/schema/advertiser.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { LaunchCampaignDto } from './dto/campaign.dto';
 import { ReviveService } from '../revive/revive.service';
 import { CampaignStatus } from './schemas/campaign.schema';
 import { Creative, CreativeDocument } from '../creative/schema/creative.schema';
 import { TargetingService } from './targeting.service';
+import { AdvertiserUserDocument } from '../advertisers/schema/advertiser.schema';
 
 @Injectable()
 export class CampaignsService {
     constructor(
         @InjectModel(Campaign.name)
         private readonly campaignModel: Model<CampaignDocument>,
-        @InjectModel(Advertiser.name)
-        private readonly advertiserModel: Model<AdvertiserDocument>,
         @InjectModel(User.name)
-        private readonly organizationModel: Model<UserDocument>,
+        private readonly userModel: Model<UserDocument>,
         @InjectModel(Creative.name)
         private readonly creativeModel: Model<CreativeDocument>,
         private readonly reviveService: ReviveService,
@@ -26,13 +24,16 @@ export class CampaignsService {
     ) { }
 
     async lanuchCampaign(dto: LaunchCampaignDto, userId: string) {
-        const organisationalId = new Types.ObjectId(userId)
-        const advertiser = await this.advertiserModel
-            .findOne({ organizationId: organisationalId })
-            .exec();
+        const user_id = this.toObjectId(userId);
+
+        const advertiser = await this.userModel
+            .findOne({ _id: user_id, accountType: 'Advertiser' })
+            .exec() as unknown as AdvertiserUserDocument | null;
+
         if (!advertiser) {
-            throw new NotFoundException('Advertiser not found for this organization');
+            throw new NotFoundException('Advertiser account not found');
         }
+
         if (advertiser.reviveAdvertiserId == null) {
             throw new NotFoundException('Advertiser is not linked to Revive');
         }
@@ -64,8 +65,8 @@ export class CampaignsService {
         }
 
         const campaign = await this.campaignModel.create({
-            organizationId: new Types.ObjectId(organisationalId),
-            advertiserId: advertiser.reviveAdvertiserId,
+            advertiser: user_id,
+            advertiserReviveId: advertiser.reviveAdvertiserId,
             campaignName: dto.campaignName,
             reviveCampaignId: reviveCampaignId,
             startDate,
@@ -106,9 +107,9 @@ export class CampaignsService {
     }
 
     async getCampaignSummary(campaignId: string, userId: string): Promise<unknown> {
-        const organizationId = this.toObjectId(userId);
+        const advertiserId = this.toObjectId(userId);
         const campaign = await this.campaignModel
-            .findOne({ _id: this.toObjectId(campaignId), organizationId })
+            .findOne({ _id: this.toObjectId(campaignId), advertiser: advertiserId })
             .lean()
             .exec();
 
@@ -180,38 +181,38 @@ export class CampaignsService {
     //     return transformedCampaign;
     // 
 
-    async createDraft(dto: Partial<Campaign>, userId: string) {
-        const organizationId = this.toObjectId(userId);
-        const organization = await this.organizationModel.findById(organizationId).exec();
-        if (!organization) {
-            throw new NotFoundException('Organization not found');
-        }
+    // async createDraft(dto: Partial<Campaign>, userId: string) {
+    //     const organizationId = this.toObjectId(userId);
+    //     const organization = await this.userModel.findById(organizationId).exec();
+    //     if (!organization) {
+    //         throw new NotFoundException('Organization not found');
+    //     }
 
-        const advertiser = await this.advertiserModel
-            .findOne({ organizationId })
-            .exec();
-        if (!advertiser) {
-            throw new NotFoundException('Advertiser not found for this organization');
-        }
-        if (advertiser.reviveAdvertiserId == null) {
-            throw new NotFoundException('Advertiser is not linked to Revive');
-        }
+    //     const advertiser = await this.userModel
+    //         .findOne({ _id: organizationId, accountType: 'advertiser' })
+    //         .exec() as unknown as AdvertiserUserDocument | null;
+    //     if (!advertiser) {
+    //         throw new NotFoundException('Advertiser not found for this organization');
+    //     }
+    //     if (advertiser.reviveAdvertiserId == null) {
+    //         throw new NotFoundException('Advertiser is not linked to Revive');
+    //     }
 
-        // const startDate = new Date(dto?.startDate);
-        // const endDate = dto.endDate ? new Date(dto.endDate) : undefined;
-        // if (endDate && endDate.getTime() <= startDate.getTime()) {
-        //     throw new BadRequestException('End date must be after start date.');
-        // }
+    //     // const startDate = new Date(dto?.startDate);
+    //     // const endDate = dto.endDate ? new Date(dto.endDate) : undefined;
+    //     // if (endDate && endDate.getTime() <= startDate.getTime()) {
+    //     //     throw new BadRequestException('End date must be after start date.');
+    //     // }
 
-        return this.campaignModel.create({
-            organizationId,
-            advertiserId: advertiser.reviveAdvertiserId,
-            campaignName: dto.campaignName,
-            startDate: dto.startDate,
-            endDate: dto.endDate,
-            status: dto.status ?? CampaignStatus.CREATED,
-        });
-    }
+    //     return this.campaignModel.create({
+    //         organizationId,
+    //         advertiserId: advertiser.reviveAdvertiserId,
+    //         campaignName: dto.campaignName,
+    //         startDate: dto.startDate,
+    //         endDate: dto.endDate,
+    //         status: dto.status ?? CampaignStatus.CREATED,
+    //     });
+    // }
 
     async findDraftById(id: string, userId: string) {
         const organizationId = this.toObjectId(userId)

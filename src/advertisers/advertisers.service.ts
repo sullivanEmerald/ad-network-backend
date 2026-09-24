@@ -43,8 +43,8 @@ export class AdvertisersService {
         const advertiser = await this.advertisersRepository.findByOrganizationId(organizationObjectId);
         const transformedAdvertiser = advertiser ? {
             id: advertiser._id.toString(),
-            name: advertiser.name,
-            email: advertiser.email,
+            name: advertiser.advertiserName,
+            email: advertiser.advertiserEmail,
         } : null;
         return transformedAdvertiser;
     }

@@ -9,6 +9,7 @@ import {
     LinkInitiator,
     LinkStatus,
 } from './schemas/campaign-zone.link';
+import { Campaign, CampaignDocument, CampaignStatus } from './schemas/campaign.schema';
 
 
 @Injectable()
@@ -18,6 +19,8 @@ export class TargetingService {
     constructor(
         @InjectModel(Zone.name)
         private readonly zoneModel: Model<ZoneDocument>,
+        @InjectModel(Campaign.name)
+        private readonly campaignModel: Model<CampaignDocument>,
         @InjectModel(CampaignZoneLink.name)
         private readonly linkModel: Model<CampaignZoneLink>,
         @InjectModel(Creative.name)
@@ -133,5 +136,36 @@ export class TargetingService {
             campaignId: campaignMongoId,
             status: LinkStatus.ACTIVE,
         });
+    }
+
+    async findEligibleCampaignsForZone(zone: Zone, zoneId: string) {
+        const matchingCreatives = await this.creativeModel.find({
+            width: zone.width,
+            height: zone.height,
+        }).lean();
+
+        const campaignIds = [...new Set(matchingCreatives.map(c => c.campaignId.toString()))];
+
+        const alreadyLinked = await this.linkModel.find({
+            zoneId: new Types.ObjectId(zoneId),
+            status: LinkStatus.ACTIVE,
+        }).distinct('campaignId');
+
+        const alreadyLinkedIds = new Set(alreadyLinked.map(id => id.toString()));
+        const eligibleIds = campaignIds.filter(id => !alreadyLinkedIds.has(id));
+
+        const campaigns = await this.campaignModel.find({
+            _id: { $in: eligibleIds },
+            status: {
+                $in: [CampaignStatus.PENDING, CampaignStatus.LINKED],
+            },
+        }).populate('advertiser', 'advertiserName advertiserEmail').lean();
+
+        return campaigns.map(campaign => ({
+            ...campaign,
+            matchingBannerCount: matchingCreatives.filter(
+                c => c.campaignId.toString() === campaign._id.toString(),
+            ).length,
+        }));
     }
 }

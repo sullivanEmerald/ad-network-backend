@@ -5,6 +5,8 @@ import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { Account } from "../users/schemas/account.schema";
 import { User } from "../users/schemas/user.schema";
+import { Advertiser } from "../advertisers/schema/advertiser.schema";
+import { Publisher } from "../publishers/schemas/publisher.schema";
 import { RegisterDto } from "./dto/register.dto";
 import { LoginDto } from "./dto/login.dto";
 import { randomBytes } from "crypto";
@@ -24,6 +26,8 @@ export class AuthService {
     constructor(
         @InjectModel(Account.name) private accountModel: Model<Account>,
         @InjectModel(User.name) private userModel: Model<User>,
+        @InjectModel(Advertiser.name) private advertiserModel: Model<Advertiser>,
+        @InjectModel(Publisher.name) private publisherModel: Model<Publisher>,
         @InjectModel(RefreshToken.name) private refreshTokenModel: Model<RefreshToken>,
         private jwtService: JwtService,
         private configService: ConfigService,
@@ -74,49 +78,61 @@ export class AuthService {
     }
 
     async register(dto: RegisterDto) {
-        const existing = await this.userModel.findOne({ businessEmail: dto.businessEmail }).exec();
+        const registrationEmail = dto.accountType === 'publisher'
+            ? dto.publisherEmail!
+            : dto.advertiserEmail!;
+        const existing = await this.userModel.findOne({ email: registrationEmail }).exec();
         if (existing) {
             throw new ConflictException("An account with this email already exists");
         }
 
         const password = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
-        const revivePassword = randomBytes(32).toString('hex');
-
-        let reviveAgencyId: number;
+        let reviveId: number;
 
         try {
-            reviveAgencyId = await this.reviveService.addAgency({
-                agencyName: dto.organizationName,
-                contactName: `${dto.firstName} ${dto.lastName}`,
-                emailAddress: dto.businessEmail,
-                username: dto.businessEmail,
-                password: revivePassword,
-                userEmail: dto.businessEmail,
-                language: 'en',
-                status: 1,
-            });
+            reviveId = dto.accountType === 'publisher'
+                ? await this.reviveService.addPublisher({
+                    publisherName: dto.publisherName!,
+                    website: dto.website!,
+                    contactName: dto.contactName!,
+                    emailAddress: dto.publisherEmail!,
+                })
+                : await this.reviveService.addAdvertiser(
+                    dto.advertiserName!,
+                    dto.advertiserEmail!,
+                );
         } catch (error) {
-            console.log('Revive organnisation agency creation error', error)
-            throw new NotFoundException("Error Creating User")
+            console.log('Revive account creation error', error);
+            throw new NotFoundException("Error Creating User");
         }
 
-        const user = await this.userModel.create({
-            firstName: dto.firstName,
-            lastName: dto.lastName,
-            businessEmail: dto.businessEmail,
-            organizationName: dto.organizationName,
-            accountType: dto.accountType,
-            reviveAgencyId: reviveAgencyId,
+        const userData = {
+            email: registrationEmail,
             password,
-        });
+        };
+        const user = dto.accountType === 'publisher'
+            ? await this.publisherModel.create({
+                ...userData,
+                publisherName: dto.publisherName,
+                contactName: dto.contactName,
+                emailAddress: dto.publisherEmail,
+                website: dto.website,
+                revivePublisherId: reviveId,
+            })
+            : await this.advertiserModel.create({
+                ...userData,
+                advertiserName: dto.advertiserName,
+                advertiserEmail: dto.advertiserEmail,
+                reviveAdvertiserId: reviveId,
+            });
 
         return user;
     }
 
     async login(dto: LoginDto) {
-        const { businessEmail, password } = dto;
-        const user = await this.userModel.findOne({ businessEmail }).exec();
+        const { email, password } = dto;
+        const user = await this.userModel.findOne({ email }).exec();
         if (!user) {
             throw new UnauthorizedException('Invalid User Credentials');
         }

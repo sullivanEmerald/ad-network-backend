@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AdvertisersService } from './advertisers.service';
 import { AdvertisersController } from './advertisers.controller';
 import { Advertiser, AdvertiserSchema } from './schema/advertiser.schema';
+import { UsersModule } from '../users/users.module';
 import { AdvertisersRepository } from './advertisers.repositpory';
 import { ReviveModule } from '../revive/revive.module';
 
@@ -11,9 +12,7 @@ import { ReviveModule } from '../revive/revive.module';
     imports: [
         ConfigModule,
         ReviveModule,
-        MongooseModule.forFeature([
-            { name: Advertiser.name, schema: AdvertiserSchema },
-        ]),
+        UsersModule,
     ],
     providers: [AdvertisersService, AdvertisersRepository],
     controllers: [AdvertisersController],

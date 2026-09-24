@@ -59,10 +59,12 @@ export class ReviveService implements OnModuleInit {
 
     async addAdvertiser(name: string, email: string): Promise<number> {
         const session = await this.ensureSession();
+        const agencyId = Number(this.configService.get<string>('REVIVE_AGENCY_ID'));
 
         return this.callApi<number>(REVIVE_ADVERTISER_METHODS.ADD, [
             session,
             {
+                agencyId,
                 advertiserName: name,
                 contactName: name,
                 emailAddress: email,
@@ -117,6 +119,8 @@ export class ReviveService implements OnModuleInit {
     }) {
         const sessionId = await this.ensureSession();
 
+        console.log('imageContent length:', dto.imageContent?.length, 'isBuffer:', Buffer.isBuffer(dto.imageContent));
+
         try {
             const bannerId = await this.callApi<number>(
                 REVIVE_CREATIVE_METHODS.ADD_BANNER,
@@ -126,6 +130,7 @@ export class ReviveService implements OnModuleInit {
                         campaignId: dto.campaignId,
                         bannerName: dto.bannerName,
                         aImage: { filename: dto.imageFilename, content: dto.imageContent, },
+                        storageType: 'web',
                         url: dto.destinationUrl,
                         weight: 1,
                         width: dto.width,
@@ -148,46 +153,25 @@ export class ReviveService implements OnModuleInit {
 
     // PUBLISHERS
     async addPublisher(dto: {
-        agencyId: number | undefined;
         publisherName: string;
         contactName: string;
         emailAddress: string;
         website: string;
-        comments?: string;
-    }): Promise<number> {
+    }) {
         const sessionId = await this.ensureSession();
 
-        try {
-            const publisherId = await this.callApi<number>(
-                REVIVE_PUBLISHER_METHODS.ADD,
-                [
-                    sessionId,
-                    {
-                        agencyId: dto.agencyId,
-                        publisherName: dto.publisherName,
-                        contactName: dto.contactName,
-                        emailAddress: dto.emailAddress,
-                        website: dto.website,
-                        ...(dto.comments && {
-                            comments: dto.comments,
-                        }),
-                    },
-                ],
-            );
+        const agencyId = Number(this.configService.get<string>('REVIVE_AGENCY_ID'));
 
-            this.logger.log(
-                `Successfully created Revive publisher: ${publisherId}`,
-            );
-
-            return publisherId;
-        } catch (error) {
-            this.logger.error(
-                'Failed to create publisher in Revive',
-                error,
-            );
-
-            throw error;
-        }
+        return this.callApi<number>(REVIVE_PUBLISHER_METHODS.ADD, [
+            sessionId,
+            {
+                agencyId,
+                publisherName: dto.publisherName,
+                website: dto.website,
+                contactName: dto.contactName,
+                emailAddress: dto.emailAddress,
+            },
+        ]);
     }
 
     // Publishers
@@ -238,7 +222,6 @@ export class ReviveService implements OnModuleInit {
 
 
     // ZONES
-
     async addZone(dto: {
         publisherId: number;
         zoneName: string;
@@ -423,7 +406,7 @@ export class ReviveService implements OnModuleInit {
     // Generating Zone Tags
     async generateZoneTag(
         zoneId: number,
-        codeType: string,
+        codeType: string | undefined,
         params: {},
     ): Promise<unknown> {
         const sessionId = await this.login();

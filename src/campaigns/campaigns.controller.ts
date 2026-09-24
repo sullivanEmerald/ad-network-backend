@@ -37,12 +37,12 @@ export class CampaignsController {
         return this.campaignsService.getCampaignById(id, user.userId);
     }
 
-    @Post('drafts')
-    async saveDraft(@Body() dto: Partial<Campaign>, @CurrentUser() user: any) {
-        console.log("draft dto", dto)
-        const campaign = await this.campaignsService.createDraft(dto, user.userId);
-        return campaign;
-    }
+    // @Post('drafts')
+    // async saveDraft(@Body() dto: Partial<Campaign>, @CurrentUser() user: any) {
+    //     console.log("draft dto", dto)
+    //     const campaign = await this.campaignsService.createDraft(dto, user.userId);
+    //     return campaign;
+    // }
 
     // @Get('drafts')
     // findDrafts(@CurrentUser() user: any) {
