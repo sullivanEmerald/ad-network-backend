@@ -2,11 +2,13 @@ import {
     IsInt,
     IsNotEmpty,
     IsOptional,
+    IsEnum,
     IsString,
     Max,
     MaxLength,
     Min,
 } from 'class-validator';
+import { LinkingMode } from '../schema/zone.schema';
 
 export class CreateZoneDto {
     @IsString()
@@ -28,6 +30,10 @@ export class CreateZoneDto {
     @Min(1)
     @Max(10000)
     height!: number;
+
+    @IsOptional()
+    @IsEnum(LinkingMode)
+    mode?: LinkingMode;
 
     @IsOptional()
     @IsString()

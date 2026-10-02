@@ -12,6 +12,7 @@ import {
   CampaignZoneLinkSchema,
 } from '../campaigns/schemas/campaign-zone.link';
 import { TargetingService } from '../campaigns/targeting.service';
+import { LinkedBanner, LinkedBannerSchema } from '../creative/schema/linked-banner.schema';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TargetingService } from '../campaigns/targeting.service';
       { name: Zone.name, schema: ZoneSchema },
       { name: Campaign.name, schema: CampaignSchema },
       { name: Creative.name, schema: CreativeSchema },
+      { name: LinkedBanner.name, schema: LinkedBannerSchema },
       { name: CampaignZoneLink.name, schema: CampaignZoneLinkSchema },
     ]),
     ReviveModule,

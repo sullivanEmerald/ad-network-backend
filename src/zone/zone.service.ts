@@ -1,5 +1,6 @@
 import {
     BadRequestException,
+    ForbiddenException,
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
@@ -10,13 +11,17 @@ import { Publisher, PublisherDocument } from '../publishers/schemas/publisher.sc
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { ReviveService } from '../revive/revive.service';
 import { CreateZoneDto } from './dto/create-zone.dto';
-import { Zone, ZoneDocument, ZoneStatus } from './schema/zone.schema';
+import { LinkingMode, Zone, ZoneDocument, ZoneStatus } from './schema/zone.schema';
 import {
     CampaignZoneLink,
+    LinkInitiator,
     LinkStatus,
 } from '../campaigns/schemas/campaign-zone.link';
 import { PublisherUserDocument } from '../publishers/schemas/publisher.schema';
 import { TargetingService } from '../campaigns/targeting.service';
+import { CampaignDocument, Campaign } from '../campaigns/schemas/campaign.schema';
+import { CreativeDocument, Creative } from '../creative/schema/creative.schema';
+import { LinkedBanner, LinkedBannerDocument, LinkedBannerStatus } from '../creative/schema/linked-banner.schema';
 
 
 @Injectable()
@@ -30,6 +35,14 @@ export class ZoneService {
         private readonly userModel: Model<UserDocument>,
         @InjectModel(CampaignZoneLink.name)
         private readonly campaignZoneLinkModel: Model<CampaignZoneLink>,
+        @InjectModel(Campaign.name)
+        private readonly campaignModel: Model<CampaignDocument>,
+        @InjectModel(Creative.name)
+        private readonly creativeModel: Model<CreativeDocument>,
+        @InjectModel(CampaignZoneLink.name)
+        private readonly linkModel: Model<CampaignZoneLink>,
+        @InjectModel(LinkedBanner.name)
+        private readonly linkedBannerModel: Model<LinkedBannerDocument>,
         private readonly reviveService: ReviveService,
         private readonly targetingService: TargetingService
     ) { }
@@ -57,6 +70,7 @@ export class ZoneService {
             width: zone.width,
             status: zone.status,
             type: zone.type,
+            mode: zone.linkingMode,
             campaignsCount: await this.campaignZoneLinkModel.countDocuments({
                 zoneId: zone._id,
                 status: LinkStatus.ACTIVE,
@@ -106,6 +120,7 @@ export class ZoneService {
             type: dto.type,
             width: dto.width,
             height: dto.height,
+            linkingMode: dto.mode,
             comments: dto.comments,
             reviveZoneId: reviveZoneId,
             status: ZoneStatus.ACTIVE,
@@ -168,7 +183,168 @@ export class ZoneService {
             throw new NotFoundException("Zone not found")
         }
 
-        return this.targetingService.findEligibleCampaignsForZone(zone, zoneId)
+        const [zoneCampaigns, linkedCampaignLinks] = await Promise.all([
+            this.targetingService.findEligibleCampaignsForZone(zone, zoneId),
+            this.campaignZoneLinkModel
+                .find({
+                    zoneId: zone._id,
+                    status: LinkStatus.ACTIVE,
+                })
+                .populate({
+                    path: 'campaignId',
+                    populate: {
+                        path: 'advertiser',
+                        select: 'advertiserName advertiserEmail',
+                    },
+                })
+                .lean(),
+        ]);
 
+        const linkedCampaigns = linkedCampaignLinks
+            .map((link) => link.campaignId)
+            .filter((campaign) => campaign != null);
+
+        return {
+            zone,
+            campaigns: zoneCampaigns,
+            linkedCampaigns,
+        }
+
+    }
+
+    async linkCampaignToZone(zoneId: string, campaignId: string, userId: string) {
+        const zone = await this.zoneModel.findById(new Types.ObjectId(zoneId))
+
+        if (!zone) {
+            throw new NotFoundException("Zone not found")
+        }
+
+        if (zone.publisherId.toString() !== userId) {
+            throw new ForbiddenException('You can only link campaigns to your own zones');
+        }
+
+        const campaign = await this.campaignModel.findById(new Types.ObjectId(campaignId));
+
+        if (!campaign) {
+            throw new NotFoundException("Campaign not found");
+        }
+
+        const creatives = await this.creativeModel.findOne({
+            campaignId: new Types.ObjectId(campaignId),
+            width: zone.width,
+            height: zone.height,
+        }).lean();
+
+        if (!creatives) {
+            throw new BadRequestException(
+                'No banners in this campaign match this zone\'s dimensions',
+            );
+        }
+
+        try {
+            await this.reviveService.linkZoneToBanner(zone.reviveZoneId, creatives.reviveBannerId);
+        } catch (error) {
+            console.log("Revive Error", error)
+            throw new BadRequestException(
+                'Campaign not successfully linked to Zone in the ad server',
+            );
+        }
+
+        const campaignObjectId = new Types.ObjectId(campaignId);
+        const zoneObjectId = new Types.ObjectId(zoneId);
+        const publisherObjectId = new Types.ObjectId(userId);
+
+        const linkedBanner = await this.linkedBannerModel.findOneAndUpdate(
+            { campaignId: campaignObjectId, zoneId: zoneObjectId },
+            {
+                $set: {
+                    campaignId: campaignObjectId,
+                    creativeId: creatives._id,
+                    zoneId: zoneObjectId,
+                    publisherId: publisherObjectId,
+                    reviveCampaignId: campaign.reviveCampaignId,
+                    reviveZoneId: zone.reviveZoneId,
+                    reviveBannerId: creatives.reviveBannerId,
+                    status: LinkedBannerStatus.ACTIVE,
+                },
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true },
+        );
+
+        await this.linkModel.findOneAndUpdate(
+            { campaignId: campaignObjectId, zoneId: zoneObjectId },
+            {
+                $set: {
+                    campaignId: campaignObjectId,
+                    zoneId: zoneObjectId,
+                    reviveCampaignId: campaign.reviveCampaignId,
+                    reviveZoneId: zone.reviveZoneId,
+                    status: LinkStatus.ACTIVE,
+                    initiatedBy: LinkInitiator.PUBLISHER,
+                },
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true },
+        );
+
+        return linkedBanner;
+    }
+
+    async unlinkCampaignFromZone(zoneId: string, campaignId: string, userId: string) {
+        const zone = await this.zoneModel.findById(new Types.ObjectId(zoneId));
+        if (!zone) {
+            throw new NotFoundException("Zone not found");
+        }
+
+        if (zone.publisherId.toString() !== userId) {
+            throw new ForbiddenException('You can only unlink campaigns from your own zones');
+        }
+
+        const campaign = await this.campaignModel.findById(new Types.ObjectId(campaignId));
+        if (!campaign) {
+            throw new NotFoundException("Campaign not found");
+        }
+
+        const banner = await this.linkedBannerModel.findOne({
+            campaignId: new Types.ObjectId(campaignId),
+            zoneId: new Types.ObjectId(zoneId),
+            status: LinkedBannerStatus.ACTIVE,
+        });
+
+        if (!banner) {
+            throw new BadRequestException(
+                'No active link found between this campaign and zone',
+            );
+        }
+
+        try {
+            await this.reviveService.unlinkZoneFromBanner(zone.reviveZoneId, banner.reviveBannerId);
+        } catch (error) {
+            throw new BadRequestException(
+                'Failed to unlink campaign from zone in the ad server',
+            );
+        }
+
+        const campaignObjectId = new Types.ObjectId(campaignId);
+        const zoneObjectId = new Types.ObjectId(zoneId);
+
+        await this.linkModel.findOneAndUpdate(
+            { campaignId: campaignObjectId, zoneId: zoneObjectId },
+            {
+                $set: {
+                    status: LinkStatus.UNLINKED,
+                },
+            },
+        );
+
+        await this.linkedBannerModel.findOneAndUpdate(
+            { campaignId: campaignObjectId, zoneId: zoneObjectId },
+            {
+                $set: {
+                    status: LinkedBannerStatus.UNLINKED,
+                },
+            },
+        );
+
+        return { message: 'Campaign successfully unlinked from zone' };
     }
 }

@@ -5,6 +5,7 @@ import {
     Param,
     Post,
     UseGuards,
+    Delete
 } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -51,6 +52,30 @@ export class ZoneController {
     async getZoneCampaigns(
         @Param("zoneId") zoneId: string,
     ) {
-        return this.zonesService.getZoneCampaigns(zoneId)
+        const result = await this.zonesService.getZoneCampaigns(zoneId)
+        console.log("Available Campaign Zones", result)
+        return result;
+    }
+
+    @Post("link/:zoneId/:campaigId")
+    async linkCampaignToZone(
+        @Param("zoneId") zoneId: string,
+        @Param("campaigId") campaigId: string,
+        @CurrentUser() user: AuthenticatedUser
+    ) {
+        const result = await this.zonesService.linkCampaignToZone(zoneId, campaigId, user.userId)
+        console.log("Link Campaign to Zone", result)
+        return result;
+    }
+
+    @Delete("unlink/:zoneId/:campaigId")
+    async unlinkCampaignFromZone(
+        @Param("zoneId") zoneId: string,
+        @Param("campaigId") campaigId: string,
+        @CurrentUser() user: AuthenticatedUser
+    ) {
+        const result = await this.zonesService.unlinkCampaignFromZone(zoneId, campaigId, user.userId)
+        console.log("Unlink Campaign from Zone", result)
+        return result;
     }
 }

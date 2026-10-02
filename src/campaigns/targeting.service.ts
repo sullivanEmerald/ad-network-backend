@@ -140,8 +140,8 @@ export class TargetingService {
 
     async findEligibleCampaignsForZone(zone: Zone, zoneId: string) {
         const matchingCreatives = await this.creativeModel.find({
-            width: zone.width,
-            height: zone.height,
+            width: Number(zone.width),
+            height: Number(zone.height),
         }).lean();
 
         const campaignIds = [...new Set(matchingCreatives.map(c => c.campaignId.toString()))];

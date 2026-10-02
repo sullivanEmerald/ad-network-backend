@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/c
 import { ConfigService } from '@nestjs/config';
 import * as xmlrpc from 'xmlrpc';
 import { REVIVE_ADVERTISER_METHODS } from '../advertisers/revive/advertiser-methods.revive';
-import { REVIVE_CAMPAIGN_METHODS } from './enums/campaigns.enums';
+import { REVIVE_CAMPAIGN_METHODS, REVIVE_BANNER_METHODS } from './enums/campaigns.enums';
 import { REVIVE_CREATIVE_METHODS } from '../creative/methods/creative-methods.revive';
 import { REVIVE_PUBLISHER_METHODS } from '../publishers/revive/publishers-method.revive';
 import { REVIVE_AGENCY_METHODS } from './enums/agency.enums';
@@ -434,6 +434,38 @@ export class ReviveService implements OnModuleInit {
                 `Failed to generate tag`,
                 error,
             );
+        }
+    }
+
+    async linkZoneToBanner(zoneId: number, bannerId: number): Promise<number> {
+        const sessionId = await this.ensureSession();
+        try {
+            return await this.callApi<number>(
+                REVIVE_BANNER_METHODS.LINK_BANNER,
+                [sessionId, zoneId, bannerId],
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to link zone ${zoneId} to banner ${bannerId}`,
+                error,
+            );
+            throw error;
+        }
+    }
+
+    async unlinkZoneFromBanner(zoneId: number, bannerId: number): Promise<number> {
+        const sessionId = await this.ensureSession();
+        try {
+            return await this.callApi<number>(
+                REVIVE_BANNER_METHODS.UNLINK_BANNER,
+                [sessionId, zoneId, bannerId],
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to unlink zone ${zoneId} from banner ${bannerId}`,
+                error,
+            );
+            throw error;
         }
     }
 }
