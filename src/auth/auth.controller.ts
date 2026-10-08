@@ -13,6 +13,7 @@ export class AuthController {
 
     @Post("register")
     async register(@Body() dto: RegisterDto) {
+        console.log('registering', dto)
         return this.authService.register(dto);
     }
 

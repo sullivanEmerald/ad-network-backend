@@ -9,6 +9,12 @@ import { CampaignStatus } from './schemas/campaign.schema';
 import { Creative, CreativeDocument } from '../creative/schema/creative.schema';
 import { TargetingService } from './targeting.service';
 import { AdvertiserUserDocument } from '../advertisers/schema/advertiser.schema';
+import { CreativeService } from '../creative/creative.service';
+import { Zone, ZoneDocument, ZoneStatus, LinkingMode } from '../zone/schema/zone.schema';
+import {
+    CampaignZoneLink,
+    LinkStatus,
+} from './schemas/campaign-zone.link';
 
 @Injectable()
 export class CampaignsService {
@@ -19,8 +25,13 @@ export class CampaignsService {
         private readonly userModel: Model<UserDocument>,
         @InjectModel(Creative.name)
         private readonly creativeModel: Model<CreativeDocument>,
+        @InjectModel(Zone.name)
+        private readonly zoneModel: Model<ZoneDocument>,
+        @InjectModel(CampaignZoneLink.name)
+        private readonly campaignZoneLinkModel: Model<CampaignZoneLink>,
         private readonly reviveService: ReviveService,
-        private readonly targetingService: TargetingService
+        private readonly targetingService: TargetingService,
+        private readonly creativeService: CreativeService
     ) { }
 
     async lanuchCampaign(dto: LaunchCampaignDto, userId: string) {
@@ -81,10 +92,10 @@ export class CampaignsService {
     }
 
     async getCampaigns(userId: string) {
-        const organizationId = this.toObjectId(userId);
+        const advertiserId = this.toObjectId(userId);
 
         const campaigns = await this.campaignModel
-            .find({ organizationId })
+            .find({ advertiser: advertiserId })
             .sort({ createdAt: -1 })
             .lean()
             .exec();
@@ -93,9 +104,9 @@ export class CampaignsService {
     }
 
     async getCampaignById(id: string, userId: string) {
-        const organizationId = this.toObjectId(userId);
+        const advertiserId = this.toObjectId(userId);
         const campaign = await this.campaignModel
-            .findOne({ _id: this.toObjectId(id), organizationId })
+            .findOne({ _id: this.toObjectId(id), advertiser: advertiserId })
             .lean()
             .exec();
 
@@ -141,6 +152,8 @@ export class CampaignsService {
             endDate: campaignData.endDate,
             status: campaignData.status,
             isScheduled: new Date(campaignData.startDate).getTime() > Date.now(),
+            isRunning: new Date(campaignData.startDate).getTime() <= Date.now() && (!campaignData.endDate || new Date(campaignData.endDate).getTime() >= Date.now()),
+            isCompleted: campaignData.endDate && new Date(campaignData.endDate).getTime() < Date.now(),
             id: _id.toString(),
         };
     }
@@ -215,8 +228,8 @@ export class CampaignsService {
     // }
 
     async findDraftById(id: string, userId: string) {
-        const organizationId = this.toObjectId(userId)
-        const campaign = await this.campaignModel.findOne({ _id: id, organizationId }).lean();
+        const advertiserId = this.toObjectId(userId)
+        const campaign = await this.campaignModel.findOne({ _id: id, advertiser: advertiserId }).lean();
         if (!campaign) {
             throw new NotFoundException('Draft not found');
         }
@@ -224,7 +237,7 @@ export class CampaignsService {
         return campaign;
     }
 
-    async finalLaunch(campaignId: string) {
+    async finalLaunch(campaignId: string, zoneId: string | null) {
         const newCampaignId = new Types.ObjectId(campaignId)
         const campaign = await this.campaignModel.findById(newCampaignId);
         if (!campaign) {
@@ -250,15 +263,21 @@ export class CampaignsService {
         const { linked, failed } = await this.targetingService.applyAutomaticLinking(
             campaign._id as Types.ObjectId,
             campaign.reviveCampaignId,
+            zoneId
         );
 
-        if (linked === 0) {
-            throw new BadRequestException(
-                'No matching zones available — campaign not launched',
-            );
+        if (linked === 0 && failed === 0) {
+            campaign.status = CampaignStatus.QUEUED;
+            await campaign.save();
+
+            return {
+                status: campaign.status,
+                zonesLinked: linked,
+                zonesFailed: failed,
+            };
         }
 
-        campaign.status = CampaignStatus.LINKED;
+        campaign.status = CampaignStatus.ASSIGNED;
         await campaign.save();
 
         return {
@@ -266,5 +285,68 @@ export class CampaignsService {
             zonesLinked: linked,
             zonesFailed: failed,
         };
+    }
+
+    async storeCampaign(campaignId: string) {
+        const newCampaignId = new Types.ObjectId(campaignId)
+        const campaign = await this.campaignModel.findById(newCampaignId);
+        if (!campaign) {
+            throw new NotFoundException('Campaign not found');
+        }
+        campaign.status = CampaignStatus.STORED;
+        await campaign.save();
+        return campaign;
+    }
+
+
+    async getEligibleZones(campaignId: string) {
+        const campaignObjectId = this.toObjectId(campaignId);
+        const campaign = await this.campaignModel.findById(campaignObjectId);
+        if (!campaign) {
+            throw new NotFoundException('Campaign not found');
+        }
+        const campaignCreatives = await this.creativeService.getCreativeByCampaignId(campaignId);
+
+        const sizePairs = [
+            ...new Map(
+                campaignCreatives
+                    .filter((creative) => creative.width != null && creative.height != null)
+                    .map((creative) => [
+                        `${creative.width}x${creative.height}`,
+                        { width: creative.width, height: creative.height },
+                    ]),
+            ).values(),
+        ];
+
+        if (sizePairs.length === 0) {
+            throw new BadRequestException(
+                'Campaign needs at least one banner with dimensions to check for eligible zones',
+            );
+        }
+
+        const linkedZoneIds = await this.campaignZoneLinkModel
+            .find({
+                campaignId: campaignObjectId,
+                status: LinkStatus.ACTIVE,
+            })
+            .distinct('zoneId');
+
+        const zones = await this.zoneModel
+            .find({
+                _id: { $nin: linkedZoneIds },
+                status: ZoneStatus.ACTIVE,
+                linkingMode: LinkingMode.automatic,
+                $or: sizePairs,
+            })
+            .lean();
+
+        return zones.map((zone) => ({
+            ...zone,
+            matchingBannerCount: campaignCreatives.filter(
+                (creative) =>
+                    creative.width === zone.width &&
+                    creative.height === zone.height,
+            ).length,
+        }));
     }
 }

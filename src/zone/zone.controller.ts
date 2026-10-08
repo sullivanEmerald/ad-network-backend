@@ -68,13 +68,13 @@ export class ZoneController {
         return result;
     }
 
-    @Delete("unlink/:zoneId/:campaigId")
+    @Delete("unlink/:zoneId/:campaignId")
     async unlinkCampaignFromZone(
         @Param("zoneId") zoneId: string,
-        @Param("campaigId") campaigId: string,
+        @Param("campaignId") campaignId: string,
         @CurrentUser() user: AuthenticatedUser
     ) {
-        const result = await this.zonesService.unlinkCampaignFromZone(zoneId, campaigId, user.userId)
+        const result = await this.zonesService.unlinkCampaignFromZone(zoneId, campaignId, user.userId)
         console.log("Unlink Campaign from Zone", result)
         return result;
     }

@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ReviveService } from '../revive/revive.service';
 import { Creative, CreativeDocument } from '../creative/schema/creative.schema';
-import { Zone, ZoneDocument, LinkingMode } from '../zone/schema/zone.schema';
+import { Zone, ZoneDocument, LinkingMode, ZoneStatus } from '../zone/schema/zone.schema';
 import {
     CampaignZoneLink,
     LinkInitiator,
@@ -31,6 +31,7 @@ export class TargetingService {
     async applyAutomaticLinking(
         campaignMongoId: Types.ObjectId,
         reviveCampaignId: number,
+        zoneId: string | null,
     ): Promise<{ linked: number; failed: number }> {
         const creatives = await this.creativeModel
             .find({ campaignId: campaignMongoId })
@@ -39,6 +40,33 @@ export class TargetingService {
         if (creatives.length === 0) {
             this.logger.warn(`No creatives found for campaign ${campaignMongoId}`);
             return { linked: 0, failed: 0 };
+        }
+
+        if (zoneId) {
+            if (!Types.ObjectId.isValid(zoneId)) {
+                this.logger.warn(`Invalid zone id provided for campaign ${campaignMongoId}: ${zoneId}`);
+                return { linked: 0, failed: 0 };
+            }
+
+            const zoneMongoId = new Types.ObjectId(zoneId);
+            const zone = await this.zoneModel.findById(zoneMongoId);
+
+            if (!zone) {
+                this.logger.warn(`Zone ${zoneId} not found for campaign ${campaignMongoId}`);
+                return { linked: 0, failed: 0 };
+            }
+
+            await this.linkOne(
+                campaignMongoId,
+                zoneMongoId,
+                reviveCampaignId,
+                zone.reviveZoneId,
+                LinkInitiator.SYSTEM,
+            );
+
+            zone.status = ZoneStatus.ACTIVE;
+            await zone.save();
+            return { linked: 1, failed: 0 };
         }
 
         const sizePairs = [
@@ -52,11 +80,11 @@ export class TargetingService {
 
         const matchingZones = await this.zoneModel.find({
             linkingMode: LinkingMode.automatic,
+            status: { $ne: ZoneStatus.ACTIVE },
             $or: sizePairs.map(({ width, height }) => ({ width, height })),
-        }).lean();
+        });
 
         if (matchingZones.length === 0) {
-            this.logger.warn(`No matching zones found for campaign ${campaignMongoId}`);
             return { linked: 0, failed: 0 };
         }
 
@@ -72,6 +100,8 @@ export class TargetingService {
                     zone.reviveZoneId,
                     LinkInitiator.SYSTEM,
                 );
+                zone.status = ZoneStatus.ACTIVE;
+                await zone.save();
                 linked++;
             } catch (error) {
                 failed++;
@@ -157,7 +187,7 @@ export class TargetingService {
         const campaigns = await this.campaignModel.find({
             _id: { $in: eligibleIds },
             status: {
-                $in: [CampaignStatus.PENDING, CampaignStatus.LINKED],
+                $in: [CampaignStatus.ACTIVE, CampaignStatus.ASSIGNED, CampaignStatus.QUEUED],
             },
         }).populate('advertiser', 'advertiserName advertiserEmail').lean();
 

@@ -12,6 +12,7 @@ import {
     CampaignZoneLinkSchema,
 } from './schemas/campaign-zone.link';
 import { TargetingService } from './targeting.service';
+import { CreativeModule } from '../creative/creative.module';
 
 @Module({
     imports: [
@@ -23,6 +24,7 @@ import { TargetingService } from './targeting.service';
         ]),
         ReviveModule,
         UsersModule,
+        CreativeModule,
     ],
     controllers: [CampaignsController],
     providers: [CampaignsService, TargetingService],

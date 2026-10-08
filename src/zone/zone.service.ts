@@ -183,10 +183,10 @@ export class ZoneService {
             throw new NotFoundException("Zone not found")
         }
 
-        const [zoneCampaigns, linkedCampaignLinks] = await Promise.all([
+        const [zoneCampaigns, campaign] = await Promise.all([
             this.targetingService.findEligibleCampaignsForZone(zone, zoneId),
             this.campaignZoneLinkModel
-                .find({
+                .findOne({
                     zoneId: zone._id,
                     status: LinkStatus.ACTIVE,
                 })
@@ -200,14 +200,15 @@ export class ZoneService {
                 .lean(),
         ]);
 
-        const linkedCampaigns = linkedCampaignLinks
-            .map((link) => link.campaignId)
-            .filter((campaign) => campaign != null);
+
+        const campaignData = campaign ? {
+            ...campaign.campaignId,
+        } : null;
 
         return {
             zone,
             campaigns: zoneCampaigns,
-            linkedCampaigns,
+            campaign: campaignData,
         }
 
     }

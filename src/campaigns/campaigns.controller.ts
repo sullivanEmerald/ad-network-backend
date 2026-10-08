@@ -58,9 +58,21 @@ export class CampaignsController {
         return campaign;
     }
 
-    @Patch(':campaignId/launch')
-    async launchCampaign(@Param('campaignId') campaignId: string) {
-        return this.campaignsService.finalLaunch(campaignId)
+    @Patch(':campaignId/:zoneId/launch')
+    async launchCampaign(@Param('campaignId') campaignId: string, @Param('zoneId') zoneId: string | null) {
+        return this.campaignsService.finalLaunch(campaignId, zoneId);
     }
 
+    @Patch(':campaignId/store')
+    async storeCampaign(@Param('campaignId') campaignId: string) {
+        return this.campaignsService.storeCampaign(campaignId)
+    }
+
+
+    @Get(':campaignId/eligible-zones')
+    async getEligibleZones(@Param('campaignId') campaignId: string) {
+        const zones = await this.campaignsService.getEligibleZones(campaignId)
+        console.log("Eligible Zones", zones)
+        return zones;
+    }
 }

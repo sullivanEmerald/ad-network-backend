@@ -147,5 +147,11 @@ export class CreativeService {
         return this.creativeModel.find({ campaignId: id }).sort({ createdAt: -1 })
             .lean();
     }
+
+    async getCreativeByCampaignId(campaignId: string) {
+        const id = new Types.ObjectId(campaignId)
+        return this.creativeModel.find({ campaignId: id }).sort({ createdAt: -1 })
+            .lean();
+    }
 }
 

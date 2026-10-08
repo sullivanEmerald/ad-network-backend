@@ -6,7 +6,10 @@ export type CampaignDocument = HydratedDocument<Campaign>;
 export enum CampaignStatus {
     CREATED = 'created',
     PENDING = 'pending',
-    LINKED = "linked",
+    STORED = 'stored',
+    ACTIVE = "active",
+    QUEUED = "queued",
+    ASSIGNED = "assigned",
     COMPLETED = "completed",
 }
 

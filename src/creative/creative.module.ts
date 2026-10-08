@@ -17,6 +17,7 @@ import { LinkedBanner, LinkedBannerSchema } from './schema/linked-banner.schema'
     ReviveModule,
   ],
   providers: [CreativeService],
-  controllers: [CreativeController]
+  controllers: [CreativeController],
+  exports: [CreativeService]
 })
 export class CreativeModule { }
